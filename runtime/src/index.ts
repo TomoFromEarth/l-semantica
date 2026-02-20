@@ -37,8 +37,9 @@ function requireNonEmptyString(value: unknown, message: string): string {
 
 function toTraceLedgerError(error: unknown): TraceLedgerError {
   if (error instanceof Error) {
+    const normalizedErrorName = error.name.trim();
     return {
-      name: error.name || "Error",
+      name: normalizedErrorName.length > 0 ? normalizedErrorName : "Error",
       message: error.message
     };
   }
@@ -63,6 +64,18 @@ function normalizeTraceLedgerPath(traceLedgerPath?: string): string | undefined 
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function createTraceRunIdFallback(): string {
+  try {
+    const generated = randomUUID();
+    const normalized = generated.trim();
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  } catch {}
+
+  return `run-fallback-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function resolveTraceRunId(runIdFactory: () => string): string {
   try {
     const rawRunId = runIdFactory();
@@ -74,7 +87,7 @@ function resolveTraceRunId(runIdFactory: () => string): string {
     }
   } catch {}
 
-  return randomUUID();
+  return createTraceRunIdFallback();
 }
 
 function resolveTraceTimestamp(now: () => Date): string {
@@ -129,8 +142,8 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
   const runIdFactory = options.runIdFactory ?? (() => randomUUID());
   const traceLedgerPath = normalizeTraceLedgerPath(options.traceLedgerPath);
 
-  const runId = resolveTraceRunId(runIdFactory);
-  const startedAt = resolveTraceTimestamp(now);
+  const runId = traceLedgerPath ? resolveTraceRunId(runIdFactory) : "";
+  const startedAt = traceLedgerPath ? resolveTraceTimestamp(now) : "";
 
   let invocationError: TraceLedgerError | undefined;
   try {
@@ -152,13 +165,15 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
     invocationError = toTraceLedgerError(error);
     throw error;
   } finally {
-    emitRuntimeTraceLedger({
-      runId,
-      startedAt,
-      completedAt: resolveTraceTimestamp(now),
-      traceLedgerPath,
-      error: invocationError
-    });
+    if (traceLedgerPath) {
+      emitRuntimeTraceLedger({
+        runId,
+        startedAt,
+        completedAt: resolveTraceTimestamp(now),
+        traceLedgerPath,
+        error: invocationError
+      });
+    }
   }
 }
 

@@ -244,3 +244,101 @@ test("runSemanticIr preserves original non-Error throws with safe ledger message
     rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
+
+test("runSemanticIr does not evaluate trace hooks when trace ledger output is disabled", () => {
+  let runIdFactoryCalls = 0;
+  let nowCalls = 0;
+
+  const result = runSemanticIr(
+    {
+      version: "0.1.0",
+      goal: "ship parser"
+    },
+    {
+      runIdFactory: () => {
+        runIdFactoryCalls += 1;
+        throw new Error("run id factory should not be called");
+      },
+      now: () => {
+        nowCalls += 1;
+        throw new Error("clock hook should not be called");
+      }
+    }
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.traceId, "trace-0.1.0");
+  assert.equal(runIdFactoryCalls, 0);
+  assert.equal(nowCalls, 0);
+});
+
+test("runSemanticIr falls back to best-effort run id when runIdFactory throws", () => {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-trace-ledger-"));
+  const traceLedgerPath = join(tmpRoot, "runtime-trace-ledger.ndjson");
+
+  try {
+    const result = runSemanticIr(
+      {
+        version: "0.1.0",
+        goal: "ship parser"
+      },
+      {
+        traceLedgerPath,
+        runIdFactory: () => {
+          throw new Error("run id factory failed");
+        },
+        now: makeDeterministicClock(["2026-02-20T15:00:00.000Z", "2026-02-20T15:00:01.000Z"])
+      }
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(result.traceId, "trace-0.1.0");
+
+    const entries = readTraceLedgerEntries(traceLedgerPath);
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].run_id.trim().length > 0, true);
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("runSemanticIr normalizes whitespace Error names in failure trace entries", () => {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-trace-ledger-"));
+  const traceLedgerPath = join(tmpRoot, "runtime-trace-ledger.ndjson");
+
+  const whitespaceNameError = new Error("semantic version lookup failed");
+  whitespaceNameError.name = "   ";
+
+  const irWithThrowingGetter = {
+    get version(): string {
+      throw whitespaceNameError;
+    },
+    goal: "ship parser"
+  } as unknown as { version: string; goal: string };
+
+  try {
+    assert.throws(
+      () =>
+        runSemanticIr(irWithThrowingGetter, {
+          traceLedgerPath,
+          runIdFactory: () => "run-whitespace-error-name-001",
+          now: makeDeterministicClock(["2026-02-20T16:00:00.000Z", "2026-02-20T16:00:01.000Z"])
+        }),
+      (error) => {
+        assert.equal(error, whitespaceNameError);
+        return true;
+      }
+    );
+
+    const entries = readTraceLedgerEntries(traceLedgerPath);
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].outcome.status, "failure");
+    if (entries[0].outcome.status !== "failure") {
+      assert.fail("Expected failed trace ledger outcome");
+    }
+    assert.equal(entries[0].outcome.error.name, "Error");
+    assert.equal(entries[0].outcome.error.message, "semantic version lookup failed");
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
