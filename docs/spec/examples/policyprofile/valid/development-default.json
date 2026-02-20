@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "metadata": {
+    "profile_id": "policy-dev-default",
+    "environment": "development",
+    "created_at": "2026-02-20T18:00:00Z",
+    "source": "runtime/defaults/dev"
+  },
+  "capability_policy": {
+    "allow": ["filesystem.read", "network.http", "shell.exec"],
+    "deny": ["git.push"],
+    "escalation_requirements": {
+      "default": "none",
+      "rules": []
+    }
+  },
+  "constraints": {
+    "max_autonomous_steps": 100,
+    "max_runtime_seconds": 900,
+    "require_human_review_on_policy_violation": true
+  }
+}
