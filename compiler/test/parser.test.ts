@@ -71,6 +71,12 @@ test("parseLsDocument returns actionable diagnostics for unquoted goal string", 
     ).length,
     0
   );
+  assert.equal(
+    result.diagnostics.filter((diagnostic) =>
+      diagnostic.message.includes("Document must contain exactly one goal declaration")
+    ).length,
+    0
+  );
   assert.equal(result.diagnostics[0].range.start.line, 1);
 });
 
@@ -104,6 +110,32 @@ test("parseLsDocument does not discard declarations when goal is missing", () =>
     ),
     false
   );
+});
+
+test("parseLsDocument anchors missing capability diagnostic near goal declaration", () => {
+  const source = 'goal "ship parser"\n\n';
+  const result = parseLsDocument(source);
+
+  assert.equal(result.ast, null);
+  const capabilityDiagnostic = result.diagnostics.find((diagnostic) =>
+    diagnostic.message.includes("at least one capability declaration")
+  );
+
+  assert.notEqual(capabilityDiagnostic, undefined);
+  assert.equal(capabilityDiagnostic?.range.start.line, 1);
+});
+
+test("parseLsDocument anchors missing check diagnostic near last capability", () => {
+  const source = 'goal "ship parser"\ncapability read_docs "read docs"\n\n';
+  const result = parseLsDocument(source);
+
+  assert.equal(result.ast, null);
+  const checkDiagnostic = result.diagnostics.find((diagnostic) =>
+    diagnostic.message.includes("at least one check declaration")
+  );
+
+  assert.notEqual(checkDiagnostic, undefined);
+  assert.equal(checkDiagnostic?.range.start.line, 2);
 });
 
 test("parseLsDocument avoids cascading capability diagnostics when identifier is missing", () => {

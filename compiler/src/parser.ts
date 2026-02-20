@@ -124,7 +124,13 @@ class Parser {
           diagnostic.message === "Document must start with a goal declaration"
       );
 
-      if (!hasStartGoalDiagnostic) {
+      const hasInvalidGoalDeclarationDiagnostic = this.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.code === "PARSE_EXPECTED_TOKEN" &&
+          diagnostic.message === "Expected a quoted string after 'goal'"
+      );
+
+      if (!hasStartGoalDiagnostic && !hasInvalidGoalDeclarationDiagnostic) {
         this.addDiagnostic(
           "PARSE_MISSING_REQUIRED_DECLARATION",
           "Document must contain exactly one goal declaration",
@@ -134,18 +140,31 @@ class Parser {
     }
 
     if (capabilities.length === 0) {
-      this.addDiagnostic(
+      const capabilityAnchorRange =
+        goal !== null
+          ? createRange(goal.range.end, goal.range.end)
+          : createRange(documentStartToken.range.start, documentStartToken.range.start);
+
+      this.addDiagnosticAtRange(
         "PARSE_MISSING_REQUIRED_DECLARATION",
         "Document must contain at least one capability declaration",
-        this.current()
+        capabilityAnchorRange
       );
     }
 
     if (checks.length === 0) {
-      this.addDiagnostic(
+      const checkAnchorPosition =
+        capabilities.length > 0
+          ? capabilities[capabilities.length - 1].range.end
+          : goal !== null
+            ? goal.range.end
+            : documentStartToken.range.start;
+      const checkAnchorRange = createRange(checkAnchorPosition, checkAnchorPosition);
+
+      this.addDiagnosticAtRange(
         "PARSE_MISSING_REQUIRED_DECLARATION",
         "Document must contain at least one check declaration",
-        this.current()
+        checkAnchorRange
       );
     }
 
@@ -331,6 +350,14 @@ class Parser {
       code,
       message,
       range: createRange(token.range.start, token.range.end)
+    });
+  }
+
+  private addDiagnosticAtRange(code: DiagnosticCode, message: string, range: SourceRange): void {
+    this.diagnostics.push({
+      code,
+      message,
+      range: createRange(range.start, range.end)
     });
   }
 }
