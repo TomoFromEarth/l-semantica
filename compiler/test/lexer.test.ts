@@ -61,3 +61,21 @@ test("lex reports invalid escape range at the escape sequence", () => {
   assert.notEqual(stringToken, undefined);
   assert.equal(stringToken?.value, String.raw`bad \q escape`);
 });
+
+test("lex treats inherited object-key names as identifiers", () => {
+  const result = lex("constructor");
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.tokens[0]?.kind, "Identifier");
+  assert.equal(result.tokens[0]?.lexeme, "constructor");
+});
+
+test("lex treats backslash newline in a string as unterminated boundary", () => {
+  const source = 'goal "line break\\' + "\n" + 'capability read_docs "ok"';
+  const result = lex(source);
+  const diagnosticCodes = result.diagnostics.map((diagnostic) => diagnostic.code);
+
+  assert.ok(diagnosticCodes.includes("LEX_UNTERMINATED_STRING"));
+  assert.ok(!diagnosticCodes.includes("LEX_INVALID_ESCAPE"));
+  assert.ok(result.tokens.some((token) => token.kind === "CapabilityKeyword"));
+});

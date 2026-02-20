@@ -181,6 +181,10 @@ export function lex(input: string): LexResult {
             break;
           }
 
+          if (escaped === "\n" || escaped === "\r") {
+            break;
+          }
+
           lexeme += advance();
           const decoded = decodeEscape(escaped);
           if (decoded === null) {
@@ -225,7 +229,9 @@ export function lex(input: string): LexResult {
         lexeme += advance();
       }
 
-      const keywordKind = KEYWORD_KINDS[lexeme];
+      const keywordKind = Object.prototype.hasOwnProperty.call(KEYWORD_KINDS, lexeme)
+        ? KEYWORD_KINDS[lexeme]
+        : undefined;
       addToken(keywordKind ?? "Identifier", start, currentPosition(), lexeme, lexeme);
       continue;
     }
