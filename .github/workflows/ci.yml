@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  repo-health:
+    name: repo-health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required repository files
+        run: |
+          set -euo pipefail
+          required_files=(
+            "README.md"
+            "LICENSE"
+            "CONTRIBUTING.md"
+            "CODE_OF_CONDUCT.md"
+            "SECURITY.md"
+            "GOVERNANCE.md"
+            "rfcs/README.md"
+            "rfcs/000-template.md"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "Missing required file: $file"
+              exit 1
+            fi
+          done
+
+      - name: Fail on merge conflict markers
+        run: |
+          set -euo pipefail
+          if grep -R --line-number --exclude-dir=.git -E '^(<<<<<<<|=======|>>>>>>>)' .; then
+            echo "Merge conflict markers detected"
+            exit 1
+          fi
