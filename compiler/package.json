@@ -1,0 +1,12 @@
+{
+  "name": "@l-semantica/compiler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --experimental-strip-types --test \"test/**/*.test.ts\"",
+    "lint": "node scripts/lint.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}
