@@ -11,13 +11,13 @@ This document defines the smallest language surface required for M0:
 ```ebnf
 document        = ws, goal-declaration, declaration-separator, capability-section, declaration-separator, check-section, ws ;
 
-goal-declaration = "goal", wsp, string-literal ;
+goal-declaration = opt-wsp, "goal", wsp, string-literal, opt-wsp ;
 
 capability-section = capability-declaration, { declaration-separator, capability-declaration } ;
-capability-declaration = "capability", wsp, identifier, wsp, string-literal ;
+capability-declaration = opt-wsp, "capability", wsp, identifier, wsp, string-literal, opt-wsp ;
 
 check-section   = check-declaration, { declaration-separator, check-declaration } ;
-check-declaration = "check", wsp, identifier, wsp, string-literal ;
+check-declaration = opt-wsp, "check", wsp, identifier, wsp, string-literal, opt-wsp ;
 
 declaration-separator = nl, { opt-wsp, nl } ;
 opt-wsp         = { wsp-char } ;
@@ -44,6 +44,7 @@ digit           = "0"..."9" ;
 - At least one `check` declaration.
 - Declarations are ordered as `goal`, then `capability`, then `check`.
 - Blank lines between declarations are allowed.
+- Optional leading indentation and trailing spaces on declaration lines are allowed.
 - Trailing newline at end-of-file is optional.
 - Strings must be double-quoted.
 
