@@ -166,8 +166,7 @@ function requireCompatibleSchemaVersion(
   value: Record<string, unknown>,
   expectedVersion: string
 ): void {
-  const schemaVersion = value.schema_version;
-  if (typeof schemaVersion !== "string" || schemaVersion.trim().length === 0) {
+  if (!Object.prototype.hasOwnProperty.call(value, "schema_version")) {
     throw new ContractValidationError({
       contract,
       code: "SCHEMA_VALIDATION_FAILED",
@@ -177,6 +176,37 @@ function requireCompatibleSchemaVersion(
           instancePath: "/schema_version",
           keyword: "required",
           message: "schema_version is required"
+        }
+      ]
+    });
+  }
+
+  const schemaVersion = value.schema_version;
+  if (typeof schemaVersion !== "string") {
+    throw new ContractValidationError({
+      contract,
+      code: "SCHEMA_VALIDATION_FAILED",
+      message: `${contract} schema_version must be a string`,
+      issues: [
+        {
+          instancePath: "/schema_version",
+          keyword: "type",
+          message: "schema_version must be a string"
+        }
+      ]
+    });
+  }
+
+  if (schemaVersion.trim().length === 0) {
+    throw new ContractValidationError({
+      contract,
+      code: "SCHEMA_VALIDATION_FAILED",
+      message: `${contract} schema_version must be a non-empty string`,
+      issues: [
+        {
+          instancePath: "/schema_version",
+          keyword: "minLength",
+          message: "schema_version must be a non-empty string"
         }
       ]
     });

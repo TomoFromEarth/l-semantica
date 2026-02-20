@@ -179,3 +179,28 @@ test("loadRuntimeContracts reports PolicyProfile version incompatibility explici
     }
   );
 });
+
+test("loadRuntimeContracts reports schema_version type errors explicitly", () => {
+  const semanticIrWithTypeError = {
+    ...(validSemanticIr as Record<string, unknown>),
+    schema_version: 100
+  };
+
+  expectContractValidationError(
+    () =>
+      loadRuntimeContracts({
+        semanticIr: semanticIrWithTypeError,
+        policyProfile: validPolicyProfile
+      }),
+    {
+      contract: "SemanticIR",
+      code: "SCHEMA_VALIDATION_FAILED",
+      messageIncludes: "schema_version must be a string",
+      issues: {
+        minCount: 1,
+        hasKeyword: "type",
+        hasInstancePath: "/schema_version"
+      }
+    }
+  );
+});
