@@ -18,6 +18,8 @@ Execution engine, policy enforcement, and replay support.
 ## Trace Ledger
 - `runSemanticIr(ir, options)` emits one trace ledger entry per invocation.
 - Set `options.traceLedgerPath` to append JSON-lines records to a file.
+- Trace ledger emission is best-effort: write failures do not fail `runSemanticIr`.
+- `run_id` is normalized to a non-empty value before emission.
 - Each entry includes:
   - `run_id`
   - `started_at` and `completed_at`

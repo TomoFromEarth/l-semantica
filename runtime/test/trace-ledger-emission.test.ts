@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -106,6 +106,57 @@ test("runSemanticIr emits trace ledger entry for failed invocation", () => {
     }
     assert.equal(entry.outcome.error.name, "Error");
     assert.equal(entry.outcome.error.message, "SemanticIR version is required");
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("runSemanticIr normalizes invalid run ids before ledger emission", () => {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-trace-ledger-"));
+  const traceLedgerPath = join(tmpRoot, "runtime-trace-ledger.ndjson");
+
+  try {
+    runSemanticIr(
+      {
+        version: "0.1.0",
+        goal: "ship parser"
+      },
+      {
+        traceLedgerPath,
+        runIdFactory: () => "   ",
+        now: makeDeterministicClock(["2026-02-20T12:00:00.000Z", "2026-02-20T12:00:01.000Z"])
+      }
+    );
+
+    const entries = readTraceLedgerEntries(traceLedgerPath);
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].run_id.trim().length > 0, true);
+    assert.notEqual(entries[0].run_id, "   ");
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("runSemanticIr ignores trace ledger write failures on successful invocations", () => {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-trace-ledger-"));
+  const missingTraceLedgerPath = join(tmpRoot, "missing", "runtime-trace-ledger.ndjson");
+
+  try {
+    const result = runSemanticIr(
+      {
+        version: "0.1.0",
+        goal: "ship parser"
+      },
+      {
+        traceLedgerPath: missingTraceLedgerPath,
+        runIdFactory: () => "run-success-with-write-failure-001",
+        now: makeDeterministicClock(["2026-02-20T13:00:00.000Z", "2026-02-20T13:00:01.000Z"])
+      }
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(result.traceId, "trace-0.1.0");
+    assert.equal(existsSync(missingTraceLedgerPath), false);
   } finally {
     rmSync(tmpRoot, { recursive: true, force: true });
   }

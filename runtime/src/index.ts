@@ -49,6 +49,29 @@ function toTraceLedgerError(error: unknown): TraceLedgerError {
   };
 }
 
+function normalizeTraceLedgerPath(traceLedgerPath?: string): string | undefined {
+  if (typeof traceLedgerPath !== "string") {
+    return undefined;
+  }
+
+  const trimmed = traceLedgerPath.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveTraceRunId(runIdFactory: () => string): string {
+  try {
+    const rawRunId = runIdFactory();
+    if (typeof rawRunId === "string") {
+      const normalizedRunId = rawRunId.trim();
+      if (normalizedRunId.length > 0) {
+        return normalizedRunId;
+      }
+    }
+  } catch {}
+
+  return randomUUID();
+}
+
 function emitRuntimeTraceLedger(params: {
   runId: string;
   startedAt: string;
@@ -56,6 +79,10 @@ function emitRuntimeTraceLedger(params: {
   traceLedgerPath?: string;
   error?: TraceLedgerError;
 }): void {
+  if (!params.traceLedgerPath) {
+    return;
+  }
+
   const ledgerEntry: TraceLedgerEntryV0 = {
     schema_version: TRACE_LEDGER_SCHEMA_VERSION,
     run_id: params.runId,
@@ -76,14 +103,17 @@ function emitRuntimeTraceLedger(params: {
           }
   };
 
-  emitTraceLedgerEntry(ledgerEntry, { outputPath: params.traceLedgerPath });
+  try {
+    emitTraceLedgerEntry(ledgerEntry, { outputPath: params.traceLedgerPath });
+  } catch {}
 }
 
 export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOptions = {}): RuntimeResult {
   const now = options.now ?? (() => new Date());
   const runIdFactory = options.runIdFactory ?? (() => randomUUID());
+  const traceLedgerPath = normalizeTraceLedgerPath(options.traceLedgerPath);
 
-  const runId = runIdFactory();
+  const runId = resolveTraceRunId(runIdFactory);
   const startedAt = now().toISOString();
 
   let invocationError: TraceLedgerError | undefined;
@@ -106,19 +136,13 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
     invocationError = toTraceLedgerError(error);
     throw error;
   } finally {
-    try {
-      emitRuntimeTraceLedger({
-        runId,
-        startedAt,
-        completedAt: now().toISOString(),
-        traceLedgerPath: options.traceLedgerPath,
-        error: invocationError
-      });
-    } catch (traceLedgerError) {
-      if (invocationError === undefined) {
-        throw traceLedgerError;
-      }
-    }
+    emitRuntimeTraceLedger({
+      runId,
+      startedAt,
+      completedAt: now().toISOString(),
+      traceLedgerPath,
+      error: invocationError
+    });
   }
 }
 
