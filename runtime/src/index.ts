@@ -17,7 +17,7 @@ function requireNonEmptyString(value: unknown, message: string): string {
 }
 
 export function runSemanticIr(ir: SemanticIrEnvelope): RuntimeResult {
-  if (typeof ir !== "object" || ir === null) {
+  if (typeof ir !== "object" || ir === null || Array.isArray(ir)) {
     throw new Error("SemanticIR input must be an object");
   }
 

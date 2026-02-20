@@ -24,6 +24,9 @@ test("runSemanticIr validates input types", () => {
   assert.throws(() => runSemanticIr(undefined as unknown as SemanticIrEnvelope), {
     message: "SemanticIR input must be an object"
   });
+  assert.throws(() => runSemanticIr([] as unknown as SemanticIrEnvelope), {
+    message: "SemanticIR input must be an object"
+  });
 
   assert.throws(
     () => runSemanticIr({ version: 100, goal: "ship parser" } as unknown as SemanticIrEnvelope),
