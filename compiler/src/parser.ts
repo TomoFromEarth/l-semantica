@@ -40,6 +40,7 @@ class Parser {
 
   parse(): ParseResult {
     this.skipNewlines();
+    const documentStartToken = this.current();
 
     const goal = this.parseGoalSection();
     const capabilities: CapabilityDeclarationAstNode[] = [];
@@ -117,12 +118,19 @@ class Parser {
     }
 
     if (goal === null) {
-      const token = this.current();
-      this.addDiagnostic(
-        "PARSE_MISSING_REQUIRED_DECLARATION",
-        "Document must contain exactly one goal declaration",
-        token
+      const hasStartGoalDiagnostic = this.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.code === "PARSE_EXPECTED_DECLARATION" &&
+          diagnostic.message === "Document must start with a goal declaration"
       );
+
+      if (!hasStartGoalDiagnostic) {
+        this.addDiagnostic(
+          "PARSE_MISSING_REQUIRED_DECLARATION",
+          "Document must contain exactly one goal declaration",
+          documentStartToken
+        );
+      }
     }
 
     if (capabilities.length === 0) {
@@ -183,11 +191,12 @@ class Parser {
     }
 
     const valueToken = this.expect("StringLiteral", "Expected a quoted string after 'goal'");
-    this.validateLineEnding("goal declaration");
-
     if (valueToken === null || valueToken.value === undefined) {
+      this.consumeUntilLineBoundary();
       return null;
     }
+
+    this.validateLineEnding("goal declaration");
 
     return {
       kind: "GoalDeclaration",

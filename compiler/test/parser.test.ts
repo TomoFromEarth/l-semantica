@@ -65,6 +65,12 @@ test("parseLsDocument returns actionable diagnostics for unquoted goal string", 
       diagnostic.message.includes("quoted string after 'goal'")
     )
   );
+  assert.equal(
+    result.diagnostics.filter((diagnostic) =>
+      diagnostic.message.includes("Unexpected token after goal declaration")
+    ).length,
+    0
+  );
   assert.equal(result.diagnostics[0].range.start.line, 1);
 });
 
@@ -79,6 +85,12 @@ test("parseLsDocument does not discard declarations when goal is missing", () =>
     result.diagnostics.some((diagnostic) =>
       diagnostic.message.includes("Document must start with a goal declaration")
     )
+  );
+  assert.equal(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.message.includes("Document must contain exactly one goal declaration")
+    ),
+    false
   );
   assert.equal(
     result.diagnostics.some((diagnostic) =>
