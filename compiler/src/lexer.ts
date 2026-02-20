@@ -1,5 +1,11 @@
 import type { SourcePosition, SourceRange } from "./ast.ts";
-import type { Diagnostic } from "./diagnostics.ts";
+import {
+  createDiagnostic,
+  createDiagnosticSpan,
+  emitDiagnostic,
+  type Diagnostic,
+  type DiagnosticCode
+} from "./diagnostics.ts";
 
 export type TokenKind =
   | "GoalKeyword"
@@ -113,12 +119,11 @@ export function lex(input: string): LexResult {
     });
   }
 
-  function addDiagnostic(code: Diagnostic["code"], message: string, start: SourcePosition, end: SourcePosition): void {
-    diagnostics.push({
-      code,
-      message,
-      range: createRange(start, end)
-    });
+  function addDiagnostic(code: DiagnosticCode, message: string, start: SourcePosition, end: SourcePosition): void {
+    emitDiagnostic(
+      diagnostics,
+      createDiagnostic(code, message, createDiagnosticSpan(start, end))
+    );
   }
 
   while (index < source.length) {

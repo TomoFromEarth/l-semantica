@@ -17,7 +17,13 @@ export function parseGoalDeclaration(input: string): GoalAstNode {
 
 export { lex } from "./lexer.ts";
 export { parseLsDocument } from "./parser.ts";
+export {
+  createDiagnostic,
+  createDiagnosticSpan,
+  createDiagnosticSpanFromRange,
+  emitDiagnostic
+} from "./diagnostics.ts";
 export type { DocumentAstNode, GoalDeclarationAstNode, CapabilityDeclarationAstNode, CheckDeclarationAstNode, SourcePosition, SourceRange } from "./ast.ts";
-export type { Diagnostic, DiagnosticCode } from "./diagnostics.ts";
+export type { Diagnostic, DiagnosticCode, DiagnosticSeverity, DiagnosticSpan } from "./diagnostics.ts";
 export type { LexResult, Token, TokenKind } from "./lexer.ts";
 export type { ParseResult } from "./parser.ts";
