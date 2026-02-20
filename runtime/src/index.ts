@@ -8,17 +8,27 @@ export interface RuntimeResult {
   traceId: string;
 }
 
-export function runSemanticIr(ir: SemanticIrEnvelope): RuntimeResult {
-  if (ir.version.trim().length === 0) {
-    throw new Error("SemanticIR version is required");
+function requireNonEmptyString(value: unknown, message: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(message);
   }
 
-  if (ir.goal.trim().length === 0) {
-    throw new Error("SemanticIR goal is required");
+  return value.trim();
+}
+
+export function runSemanticIr(ir: SemanticIrEnvelope): RuntimeResult {
+  if (typeof ir !== "object" || ir === null) {
+    throw new Error("SemanticIR input must be an object");
   }
+
+  const version = requireNonEmptyString(
+    (ir as { version?: unknown }).version,
+    "SemanticIR version is required"
+  );
+  requireNonEmptyString((ir as { goal?: unknown }).goal, "SemanticIR goal is required");
 
   return {
     ok: true,
-    traceId: `trace-${ir.version}`
+    traceId: `trace-${version}`
   };
 }
