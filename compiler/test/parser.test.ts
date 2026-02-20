@@ -50,7 +50,10 @@ test("parseLsDocument returns actionable diagnostics for missing goal", () => {
     )
   );
   assert.ok(
-    result.diagnostics.every((diagnostic) => diagnostic.range.start.line >= 1)
+    result.diagnostics.every((diagnostic) => diagnostic.span.start.line >= 1)
+  );
+  assert.ok(
+    result.diagnostics.every((diagnostic) => diagnostic.severity === "error")
   );
 });
 
@@ -77,7 +80,9 @@ test("parseLsDocument returns actionable diagnostics for unquoted goal string", 
     ).length,
     0
   );
-  assert.equal(result.diagnostics[0].range.start.line, 1);
+  assert.equal(result.diagnostics[0].severity, "error");
+  assert.equal(result.diagnostics[0].span.file, "<input>");
+  assert.equal(result.diagnostics[0].span.start.line, 1);
 });
 
 test("parseLsDocument does not discard declarations when goal is missing", () => {
@@ -122,7 +127,7 @@ test("parseLsDocument anchors missing capability diagnostic near goal declaratio
   );
 
   assert.notEqual(capabilityDiagnostic, undefined);
-  assert.equal(capabilityDiagnostic?.range.start.line, 1);
+  assert.equal(capabilityDiagnostic?.span.start.line, 1);
 });
 
 test("parseLsDocument anchors missing check diagnostic near last capability", () => {
@@ -135,7 +140,7 @@ test("parseLsDocument anchors missing check diagnostic near last capability", ()
   );
 
   assert.notEqual(checkDiagnostic, undefined);
-  assert.equal(checkDiagnostic?.range.start.line, 2);
+  assert.equal(checkDiagnostic?.span.start.line, 2);
 });
 
 test("parseLsDocument suppresses missing capability diagnostic when capability is malformed", () => {

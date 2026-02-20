@@ -40,8 +40,10 @@ test("lex reports unterminated strings with source location", () => {
 
   assert.ok(result.diagnostics.length > 0);
   assert.equal(result.diagnostics[0].code, "LEX_UNTERMINATED_STRING");
-  assert.equal(result.diagnostics[0].range.start.line, 1);
-  assert.equal(result.diagnostics[0].range.start.column, 6);
+  assert.equal(result.diagnostics[0].severity, "error");
+  assert.equal(result.diagnostics[0].span.file, "<input>");
+  assert.equal(result.diagnostics[0].span.start.line, 1);
+  assert.equal(result.diagnostics[0].span.start.column, 6);
 });
 
 test("lex reports invalid escape range at the escape sequence", () => {
@@ -54,8 +56,10 @@ test("lex reports invalid escape range at the escape sequence", () => {
   );
 
   assert.notEqual(invalidEscape, undefined);
-  assert.equal(invalidEscape?.range.start.line, 1);
-  assert.equal(invalidEscape?.range.start.column, 11);
+  assert.equal(invalidEscape?.severity, "error");
+  assert.equal(invalidEscape?.span.file, "<input>");
+  assert.equal(invalidEscape?.span.start.line, 1);
+  assert.equal(invalidEscape?.span.start.column, 11);
 
   const stringToken = result.tokens.find((token) => token.kind === "StringLiteral");
   assert.notEqual(stringToken, undefined);

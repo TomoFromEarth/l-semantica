@@ -6,7 +6,13 @@ import type {
   SourcePosition,
   SourceRange
 } from "./ast.ts";
-import type { Diagnostic, DiagnosticCode } from "./diagnostics.ts";
+import {
+  createDiagnostic,
+  createDiagnosticSpanFromRange,
+  emitDiagnostic,
+  type Diagnostic,
+  type DiagnosticCode
+} from "./diagnostics.ts";
 import { lex, type Token } from "./lexer.ts";
 
 export interface ParseResult {
@@ -352,19 +358,25 @@ class Parser {
   }
 
   private addDiagnostic(code: DiagnosticCode, message: string, token: Token): void {
-    this.diagnostics.push({
-      code,
-      message,
-      range: createRange(token.range.start, token.range.end)
-    });
+    emitDiagnostic(
+      this.diagnostics,
+      createDiagnostic(
+        code,
+        message,
+        createDiagnosticSpanFromRange(createRange(token.range.start, token.range.end))
+      )
+    );
   }
 
   private addDiagnosticAtRange(code: DiagnosticCode, message: string, range: SourceRange): void {
-    this.diagnostics.push({
-      code,
-      message,
-      range: createRange(range.start, range.end)
-    });
+    emitDiagnostic(
+      this.diagnostics,
+      createDiagnostic(
+        code,
+        message,
+        createDiagnosticSpanFromRange(createRange(range.start, range.end))
+      )
+    );
   }
 }
 
