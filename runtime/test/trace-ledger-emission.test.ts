@@ -161,3 +161,86 @@ test("runSemanticIr ignores trace ledger write failures on successful invocation
     rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
+
+test("runSemanticIr tolerates invalid or throwing now hooks", () => {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-trace-ledger-"));
+  const traceLedgerPath = join(tmpRoot, "runtime-trace-ledger.ndjson");
+
+  let nowCallCount = 0;
+  const unstableNow = (): Date => {
+    nowCallCount += 1;
+    if (nowCallCount === 1) {
+      return new Date(Number.NaN);
+    }
+    throw new Error("clock unavailable");
+  };
+
+  try {
+    const result = runSemanticIr(
+      {
+        version: "0.1.0",
+        goal: "ship parser"
+      },
+      {
+        traceLedgerPath,
+        runIdFactory: () => "run-unstable-clock-001",
+        now: unstableNow
+      }
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(result.traceId, "trace-0.1.0");
+    assert.equal(nowCallCount, 2);
+
+    const entries = readTraceLedgerEntries(traceLedgerPath);
+    assert.equal(entries.length, 1);
+    assert.equal(Number.isNaN(Date.parse(entries[0].started_at)), false);
+    assert.equal(Number.isNaN(Date.parse(entries[0].completed_at)), false);
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("runSemanticIr preserves original non-Error throws with safe ledger message fallback", () => {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-trace-ledger-"));
+  const traceLedgerPath = join(tmpRoot, "runtime-trace-ledger.ndjson");
+
+  const nonErrorThrown = {
+    toString() {
+      throw new Error("stringify failed");
+    }
+  };
+
+  const irWithThrowingGetter = {
+    get version(): string {
+      throw nonErrorThrown;
+    },
+    goal: "ship parser"
+  } as unknown as { version: string; goal: string };
+
+  try {
+    assert.throws(
+      () =>
+        runSemanticIr(irWithThrowingGetter, {
+          traceLedgerPath,
+          runIdFactory: () => "run-non-error-throw-001",
+          now: makeDeterministicClock(["2026-02-20T14:00:00.000Z", "2026-02-20T14:00:01.000Z"])
+        }),
+      (error) => {
+        assert.equal(error, nonErrorThrown);
+        return true;
+      }
+    );
+
+    const entries = readTraceLedgerEntries(traceLedgerPath);
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].outcome.status, "failure");
+    if (entries[0].outcome.status !== "failure") {
+      assert.fail("Expected failed trace ledger outcome");
+    }
+    assert.equal(entries[0].outcome.error.name, "NonErrorThrown");
+    assert.equal(entries[0].outcome.error.message, "[unstringifiable thrown value]");
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});

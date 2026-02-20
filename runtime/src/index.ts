@@ -43,9 +43,14 @@ function toTraceLedgerError(error: unknown): TraceLedgerError {
     };
   }
 
+  let message = "[unstringifiable thrown value]";
+  try {
+    message = String(error);
+  } catch {}
+
   return {
     name: "NonErrorThrown",
-    message: String(error)
+    message
   };
 }
 
@@ -70,6 +75,17 @@ function resolveTraceRunId(runIdFactory: () => string): string {
   } catch {}
 
   return randomUUID();
+}
+
+function resolveTraceTimestamp(now: () => Date): string {
+  try {
+    const candidate = now();
+    if (candidate instanceof Date && Number.isFinite(candidate.getTime())) {
+      return candidate.toISOString();
+    }
+  } catch {}
+
+  return new Date().toISOString();
 }
 
 function emitRuntimeTraceLedger(params: {
@@ -114,7 +130,7 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
   const traceLedgerPath = normalizeTraceLedgerPath(options.traceLedgerPath);
 
   const runId = resolveTraceRunId(runIdFactory);
-  const startedAt = now().toISOString();
+  const startedAt = resolveTraceTimestamp(now);
 
   let invocationError: TraceLedgerError | undefined;
   try {
@@ -139,7 +155,7 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
     emitRuntimeTraceLedger({
       runId,
       startedAt,
-      completedAt: now().toISOString(),
+      completedAt: resolveTraceTimestamp(now),
       traceLedgerPath,
       error: invocationError
     });

@@ -15,6 +15,7 @@ Trace Ledger v0 defines the minimal JSON record emitted for every runtime invoca
   - Runtime must normalize/fallback to a non-empty `run_id` value before emission.
 - `started_at` (RFC3339 string, required): invocation start timestamp.
 - `completed_at` (RFC3339 string, required): invocation completion timestamp.
+  - Runtime must fall back to runtime clock timestamps if caller-provided clock hooks fail.
 - `contract_versions` (object, required):
   - `semantic_ir` (string, required)
   - `policy_profile` (string, required)

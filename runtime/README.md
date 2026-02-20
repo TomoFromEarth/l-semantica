@@ -20,6 +20,7 @@ Execution engine, policy enforcement, and replay support.
 - Set `options.traceLedgerPath` to append JSON-lines records to a file.
 - Trace ledger emission is best-effort: write failures do not fail `runSemanticIr`.
 - `run_id` is normalized to a non-empty value before emission.
+- Timestamp hooks are best-effort: invalid/throwing `options.now` values fall back to runtime clock time.
 - Each entry includes:
   - `run_id`
   - `started_at` and `completed_at`
