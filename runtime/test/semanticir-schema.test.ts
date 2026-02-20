@@ -1,15 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-
-import { type JsonSchemaSubset, validateJsonSchemaSubset } from "./helpers/json-schema-subset.ts";
+import { Ajv2020 } from "ajv/dist/2020.js";
 
 function loadJson(relativePathFromThisTest: string): unknown {
   const fileContents = readFileSync(new URL(relativePathFromThisTest, import.meta.url), "utf8");
   return JSON.parse(fileContents) as unknown;
 }
 
-const semanticIrSchema = loadJson("../../docs/spec/schemas/semanticir-v0.schema.json") as JsonSchemaSubset;
+const semanticIrSchema = loadJson("../../docs/spec/schemas/semanticir-v0.schema.json") as object;
 const canonicalValidExample = loadJson("../../docs/spec/examples/semanticir/valid/canonical-v0.json");
 const invalidExamples = [
   {
@@ -28,16 +27,19 @@ const invalidExamples = [
   }
 ];
 
-test("SemanticIR v0 schema accepts canonical valid example", () => {
-  const result = validateJsonSchemaSubset(semanticIrSchema, canonicalValidExample);
+const ajv = new Ajv2020({ allErrors: true });
+const validateSemanticIr = ajv.compile(semanticIrSchema);
 
-  assert.equal(result.valid, true, result.errors.join("\n"));
+test("SemanticIR v0 schema accepts canonical valid example", () => {
+  const valid = validateSemanticIr(canonicalValidExample);
+
+  assert.equal(valid, true, ajv.errorsText(validateSemanticIr.errors, { separator: "\n" }));
 });
 
 for (const invalidExample of invalidExamples) {
   test(`SemanticIR v0 schema rejects invalid example: ${invalidExample.name}`, () => {
-    const result = validateJsonSchemaSubset(semanticIrSchema, invalidExample.value);
+    const valid = validateSemanticIr(invalidExample.value);
 
-    assert.equal(result.valid, false);
+    assert.equal(valid, false);
   });
 }

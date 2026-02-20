@@ -8,5 +8,8 @@
     "test": "node --experimental-strip-types --test \"test/**/*.test.ts\"",
     "lint": "node scripts/lint.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "ajv": "^8.18.0"
   }
 }
