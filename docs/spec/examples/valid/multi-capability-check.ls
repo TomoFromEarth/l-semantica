@@ -1,0 +1,5 @@
+goal "produce a concise release summary"
+capability read_commits "inspect recent commit history"
+capability read_tests "inspect current test results"
+check summary_is_concise "summary is under 120 words"
+check mentions_risks "summary includes open risks"
