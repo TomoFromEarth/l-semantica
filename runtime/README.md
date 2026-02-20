@@ -5,6 +5,7 @@ Execution engine, policy enforcement, and replay support.
 ## Contract Specs
 - `docs/spec/semanticir-v0.md`
 - `docs/spec/policyprofile-v0.md`
+- `docs/spec/trace-ledger-v0.md`
 
 ## Contract Loader
 - `loadRuntimeContracts(input)` validates `semanticIr` and `policyProfile` payloads against v0 schemas.
@@ -13,3 +14,16 @@ Execution engine, policy enforcement, and replay support.
   - `contract`: `RuntimeContracts`, `SemanticIR`, or `PolicyProfile`
   - `issues`: field-level validation details (`instancePath`, `keyword`, `message`)
 - Setup failures (for example unreadable schema files or resolver initialization failures) may throw standard `Error`.
+
+## Trace Ledger
+- `runSemanticIr(ir, options)` emits one trace ledger entry per invocation.
+- Set `options.traceLedgerPath` to append JSON-lines records to a file.
+- Trace ledger emission is best-effort: write failures do not fail `runSemanticIr`.
+- Trace hook evaluation (`runIdFactory`, `now`) occurs only when `traceLedgerPath` is enabled.
+- `run_id` is normalized to a non-empty value before emission.
+- Timestamp hooks are best-effort: invalid/throwing `options.now` values fall back to runtime clock time.
+- Each entry includes:
+  - `run_id`
+  - `started_at` and `completed_at`
+  - `contract_versions.semantic_ir` and `contract_versions.policy_profile`
+  - `outcome.status` (`success` or `failure`) and `outcome.error` for failure cases
