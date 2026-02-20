@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "goal": "compile and validate a minimal semantic contract",
+  "deterministic_nodes": [
+    {
+      "id": "det-parse-goal",
+      "node_class": "deterministic",
+      "kind": "parse_goal",
+      "inputs": ["source.goal"],
+      "outputs": ["ir.goal"]
+    }
+  ],
+  "stochastic_nodes": [
+    {
+      "id": "sto-refine-prompt",
+      "node_class": "stochastic",
+      "provider": "openai",
+      "prompt": "Refine goal phrasing for adapter output.",
+      "temperature": 0.2
+    }
+  ]
+}

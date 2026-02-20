@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://l-semantica.dev/spec/schemas/semanticir-v0.schema.json",
+  "title": "SemanticIR v0",
+  "description": "Canonical v0 contract for SemanticIR payloads.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "metadata", "goal", "deterministic_nodes", "stochastic_nodes"],
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0",
+      "description": "Contract version for SemanticIR payload compatibility."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ir_id", "created_at", "source"],
+      "properties": {
+        "ir_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "deterministic_nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "node_class", "kind", "inputs", "outputs"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "node_class": {
+            "const": "deterministic"
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "stochastic_nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "node_class", "provider", "prompt", "temperature"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "node_class": {
+            "const": "stochastic"
+          },
+          "provider": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "temperature": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}
