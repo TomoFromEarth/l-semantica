@@ -29,9 +29,23 @@ L-Semantica is designed to make agent systems:
 - `/docs` user and contributor documentation
 
 ## Getting Started
-Bootstrap documents are in place; compiler/runtime code is next.
+### Prerequisites
+- Node.js 22+
+- pnpm 9.15.9+
 
-See:
+### Install
+```bash
+pnpm install
+```
+
+### Validate Workspace
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+
+### Project References
 - `rfcs/README.md`
 - `CONTRIBUTING.md`
 - `GOVERNANCE.md`

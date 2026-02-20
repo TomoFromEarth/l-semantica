@@ -24,6 +24,10 @@ jobs:
             "CODE_OF_CONDUCT.md"
             "SECURITY.md"
             "GOVERNANCE.md"
+            "package.json"
+            "pnpm-lock.yaml"
+            "pnpm-workspace.yaml"
+            "tsconfig.base.json"
             "rfcs/README.md"
             "rfcs/000-template.md"
           )
@@ -42,3 +46,26 @@ jobs:
             echo "Merge conflict markers detected"
             exit 1
           fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Workspace lint
+        run: pnpm -r lint
+
+      - name: Workspace typecheck
+        run: pnpm -r typecheck
+
+      - name: Workspace test
+        run: pnpm -r test
