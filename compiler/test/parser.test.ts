@@ -138,6 +138,38 @@ test("parseLsDocument anchors missing check diagnostic near last capability", ()
   assert.equal(checkDiagnostic?.range.start.line, 2);
 });
 
+test("parseLsDocument suppresses missing capability diagnostic when capability is malformed", () => {
+  const source =
+    'goal "ship parser"\n' +
+    'capability "missing id"\n' +
+    'check include_references "response includes references"';
+  const result = parseLsDocument(source);
+
+  assert.equal(result.ast, null);
+  assert.equal(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.message.includes("at least one capability declaration")
+    ),
+    false
+  );
+});
+
+test("parseLsDocument suppresses missing check diagnostic when check is malformed", () => {
+  const source =
+    'goal "ship parser"\n' +
+    'capability read_docs "read docs"\n' +
+    'check "missing id"';
+  const result = parseLsDocument(source);
+
+  assert.equal(result.ast, null);
+  assert.equal(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.message.includes("at least one check declaration")
+    ),
+    false
+  );
+});
+
 test("parseLsDocument avoids cascading capability diagnostics when identifier is missing", () => {
   const source =
     'goal "ship parser"\n' +

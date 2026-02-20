@@ -56,4 +56,8 @@ test("lex reports invalid escape range at the escape sequence", () => {
   assert.notEqual(invalidEscape, undefined);
   assert.equal(invalidEscape?.range.start.line, 1);
   assert.equal(invalidEscape?.range.start.column, 11);
+
+  const stringToken = result.tokens.find((token) => token.kind === "StringLiteral");
+  assert.notEqual(stringToken, undefined);
+  assert.equal(stringToken?.value, String.raw`bad \q escape`);
 });

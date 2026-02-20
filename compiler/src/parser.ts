@@ -45,6 +45,8 @@ class Parser {
     const goal = this.parseGoalSection();
     const capabilities: CapabilityDeclarationAstNode[] = [];
     const checks: CheckDeclarationAstNode[] = [];
+    let sawCapabilityKeyword = false;
+    let sawCheckKeyword = false;
 
     let section: "capability" | "check" = "capability";
 
@@ -59,12 +61,14 @@ class Parser {
 
       if (section === "capability") {
         if (token.kind === "CapabilityKeyword") {
+          sawCapabilityKeyword = true;
           const declaration = this.parseCapabilityDeclaration();
           if (declaration !== null) {
             capabilities.push(declaration);
           }
         } else if (token.kind === "CheckKeyword") {
           section = "check";
+          sawCheckKeyword = true;
           const declaration = this.parseCheckDeclaration();
           if (declaration !== null) {
             checks.push(declaration);
@@ -85,11 +89,13 @@ class Parser {
           this.skipInvalidDeclarationLine();
         }
       } else if (token.kind === "CheckKeyword") {
+        sawCheckKeyword = true;
         const declaration = this.parseCheckDeclaration();
         if (declaration !== null) {
           checks.push(declaration);
         }
       } else if (token.kind === "CapabilityKeyword") {
+        sawCapabilityKeyword = true;
         this.addDiagnostic(
           "PARSE_UNEXPECTED_TOKEN",
           "Capability declarations are not allowed after check declarations begin",
@@ -139,7 +145,7 @@ class Parser {
       }
     }
 
-    if (capabilities.length === 0) {
+    if (capabilities.length === 0 && !sawCapabilityKeyword) {
       const capabilityAnchorRange =
         goal !== null
           ? createRange(goal.range.end, goal.range.end)
@@ -152,7 +158,7 @@ class Parser {
       );
     }
 
-    if (checks.length === 0) {
+    if (checks.length === 0 && !sawCheckKeyword) {
       const checkAnchorPosition =
         capabilities.length > 0
           ? capabilities[capabilities.length - 1].range.end

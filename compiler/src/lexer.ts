@@ -190,6 +190,7 @@ export function lex(input: string): LexResult {
               escapeStart,
               currentPosition()
             );
+            parsedValue += `\\${escaped}`;
           } else {
             parsedValue += decoded;
           }
