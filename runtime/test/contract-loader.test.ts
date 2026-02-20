@@ -20,6 +20,12 @@ function expectContractValidationError(
     contract: "RuntimeContracts" | "SemanticIR" | "PolicyProfile";
     code: "INVALID_INPUT" | "VERSION_INCOMPATIBLE" | "SCHEMA_VALIDATION_FAILED";
     messageIncludes: string;
+    issues?: {
+      minCount?: number;
+      hasKeyword?: string;
+      hasInstancePath?: string;
+      hasMessageIncludes?: string;
+    };
   }
 ): void {
   assert.throws(operation, (error) => {
@@ -27,6 +33,27 @@ function expectContractValidationError(
     assert.equal(error.contract, expectation.contract);
     assert.equal(error.code, expectation.code);
     assert.equal(error.message.includes(expectation.messageIncludes), true);
+    if (expectation.issues?.minCount !== undefined) {
+      assert.equal(error.issues.length >= expectation.issues.minCount, true);
+    }
+    if (expectation.issues?.hasKeyword !== undefined) {
+      assert.equal(
+        error.issues.some((issue) => issue.keyword === expectation.issues?.hasKeyword),
+        true
+      );
+    }
+    if (expectation.issues?.hasInstancePath !== undefined) {
+      assert.equal(
+        error.issues.some((issue) => issue.instancePath === expectation.issues?.hasInstancePath),
+        true
+      );
+    }
+    if (expectation.issues?.hasMessageIncludes !== undefined) {
+      assert.equal(
+        error.issues.some((issue) => issue.message.includes(expectation.issues?.hasMessageIncludes ?? "")),
+        true
+      );
+    }
     return true;
   });
 }
@@ -69,7 +96,12 @@ test("loadRuntimeContracts rejects invalid SemanticIR payload with validation er
     {
       contract: "SemanticIR",
       code: "SCHEMA_VALIDATION_FAILED",
-      messageIncludes: "SemanticIR contract validation failed"
+      messageIncludes: "SemanticIR contract validation failed",
+      issues: {
+        minCount: 1,
+        hasKeyword: "required",
+        hasMessageIncludes: "required property"
+      }
     }
   );
 });
@@ -88,7 +120,12 @@ test("loadRuntimeContracts rejects invalid PolicyProfile payload with validation
     {
       contract: "PolicyProfile",
       code: "SCHEMA_VALIDATION_FAILED",
-      messageIncludes: "PolicyProfile contract validation failed"
+      messageIncludes: "PolicyProfile contract validation failed",
+      issues: {
+        minCount: 1,
+        hasKeyword: "minItems",
+        hasInstancePath: "/capability_policy/escalation_requirements/rules"
+      }
     }
   );
 });
@@ -108,7 +145,12 @@ test("loadRuntimeContracts reports SemanticIR version incompatibility explicitly
     {
       contract: "SemanticIR",
       code: "VERSION_INCOMPATIBLE",
-      messageIncludes: 'incompatible; expected "0.1.0"'
+      messageIncludes: 'incompatible; expected "0.1.0"',
+      issues: {
+        minCount: 1,
+        hasKeyword: "const",
+        hasInstancePath: "/schema_version"
+      }
     }
   );
 });
@@ -128,7 +170,12 @@ test("loadRuntimeContracts reports PolicyProfile version incompatibility explici
     {
       contract: "PolicyProfile",
       code: "VERSION_INCOMPATIBLE",
-      messageIncludes: 'incompatible; expected "0.1.0"'
+      messageIncludes: 'incompatible; expected "0.1.0"',
+      issues: {
+        minCount: 1,
+        hasKeyword: "const",
+        hasInstancePath: "/schema_version"
+      }
     }
   );
 });

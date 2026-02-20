@@ -86,26 +86,35 @@ interface ContractValidators {
   validatePolicyProfile: ValidateFunction;
 }
 
-const require = createRequire(import.meta.url);
-const Ajv2020 = resolveAjv2020Constructor();
 let contractValidators: ContractValidators | null = null;
+let ajv2020Constructor: Ajv2020Constructor | null = null;
 
-function resolveAjv2020Constructor(): Ajv2020Constructor {
-  const moduleValue = require("ajv/dist/2020.js") as
+function resolveAjv2020Constructor(moduleValue: unknown): Ajv2020Constructor {
+  const candidate = moduleValue as
     | Ajv2020Constructor
     | { default?: Ajv2020Constructor; Ajv2020?: Ajv2020Constructor };
 
-  if (typeof moduleValue === "function") {
-    return moduleValue;
+  if (typeof candidate === "function") {
+    return candidate;
   }
-  if (moduleValue.default && typeof moduleValue.default === "function") {
-    return moduleValue.default;
+  if (candidate.default && typeof candidate.default === "function") {
+    return candidate.default;
   }
-  if (moduleValue.Ajv2020 && typeof moduleValue.Ajv2020 === "function") {
-    return moduleValue.Ajv2020;
+  if (candidate.Ajv2020 && typeof candidate.Ajv2020 === "function") {
+    return candidate.Ajv2020;
   }
 
   throw new Error("Unable to resolve Ajv2020 constructor");
+}
+
+function getAjv2020Constructor(): Ajv2020Constructor {
+  if (ajv2020Constructor) {
+    return ajv2020Constructor;
+  }
+
+  const nodeRequire = createRequire(import.meta.url);
+  ajv2020Constructor = resolveAjv2020Constructor(nodeRequire("ajv/dist/2020.js"));
+  return ajv2020Constructor;
 }
 
 function getContractValidators(): ContractValidators {
@@ -113,7 +122,8 @@ function getContractValidators(): ContractValidators {
     return contractValidators;
   }
 
-  const ajv = new Ajv2020({ allErrors: true });
+  const Ajv2020Constructor = getAjv2020Constructor();
+  const ajv = new Ajv2020Constructor({ allErrors: true });
   contractValidators = {
     validateSemanticIr: ajv.compile(loadSchema("../../docs/spec/schemas/semanticir-v0.schema.json")),
     validatePolicyProfile: ajv.compile(loadSchema("../../docs/spec/schemas/policyprofile-v0.schema.json"))
@@ -193,8 +203,23 @@ function validateContract(
   validator: ValidateFunction,
   value: Record<string, unknown>
 ): void {
-  const valid = validator(value);
-  if (!valid) {
+  const validationResult = validator(value);
+  if (typeof validationResult !== "boolean") {
+    throw new ContractValidationError({
+      contract,
+      code: "SCHEMA_VALIDATION_FAILED",
+      message: `${contract} contract validation failed: async schema validators are not supported`,
+      issues: [
+        {
+          instancePath: "/",
+          keyword: "$async",
+          message: "async schema validators are not supported"
+        }
+      ]
+    });
+  }
+
+  if (!validationResult) {
     const issues = mapAjvIssues(validator.errors);
     const firstIssue = issues[0];
     const issuePath = firstIssue?.instancePath || "/";
