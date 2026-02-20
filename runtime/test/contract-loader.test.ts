@@ -1,0 +1,134 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+import {
+  ContractValidationError,
+  SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION,
+  SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION,
+  loadRuntimeContracts
+} from "../src/index.ts";
+
+function loadJson(relativePathFromThisTest: string): unknown {
+  const fileContents = readFileSync(new URL(relativePathFromThisTest, import.meta.url), "utf8");
+  return JSON.parse(fileContents) as unknown;
+}
+
+function expectContractValidationError(
+  operation: () => unknown,
+  expectation: {
+    contract: "RuntimeContracts" | "SemanticIR" | "PolicyProfile";
+    code: "INVALID_INPUT" | "VERSION_INCOMPATIBLE" | "SCHEMA_VALIDATION_FAILED";
+    messageIncludes: string;
+  }
+): void {
+  assert.throws(operation, (error) => {
+    assert.ok(error instanceof ContractValidationError);
+    assert.equal(error.contract, expectation.contract);
+    assert.equal(error.code, expectation.code);
+    assert.equal(error.message.includes(expectation.messageIncludes), true);
+    return true;
+  });
+}
+
+const validSemanticIr = loadJson("../../docs/spec/examples/semanticir/valid/canonical-v0.json");
+const validPolicyProfile = loadJson(
+  "../../docs/spec/examples/policyprofile/valid/production-restricted.json"
+);
+
+test("loadRuntimeContracts returns validated contracts for valid inputs", () => {
+  const result = loadRuntimeContracts({
+    semanticIr: validSemanticIr,
+    policyProfile: validPolicyProfile
+  });
+
+  assert.equal(result.semanticIr.schema_version, SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION);
+  assert.equal(result.policyProfile.schema_version, SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION);
+});
+
+test("loadRuntimeContracts rejects non-object contract payload", () => {
+  expectContractValidationError(
+    () => loadRuntimeContracts(undefined),
+    {
+      contract: "RuntimeContracts",
+      code: "INVALID_INPUT",
+      messageIncludes: "RuntimeContracts contract input must be an object"
+    }
+  );
+});
+
+test("loadRuntimeContracts rejects invalid SemanticIR payload with validation error", () => {
+  const invalidSemanticIr = loadJson("../../docs/spec/examples/semanticir/invalid/missing-metadata.json");
+
+  expectContractValidationError(
+    () =>
+      loadRuntimeContracts({
+        semanticIr: invalidSemanticIr,
+        policyProfile: validPolicyProfile
+      }),
+    {
+      contract: "SemanticIR",
+      code: "SCHEMA_VALIDATION_FAILED",
+      messageIncludes: "SemanticIR contract validation failed"
+    }
+  );
+});
+
+test("loadRuntimeContracts rejects invalid PolicyProfile payload with validation error", () => {
+  const invalidPolicyProfile = loadJson(
+    "../../docs/spec/examples/policyprofile/invalid/manual-approval-without-rules.json"
+  );
+
+  expectContractValidationError(
+    () =>
+      loadRuntimeContracts({
+        semanticIr: validSemanticIr,
+        policyProfile: invalidPolicyProfile
+      }),
+    {
+      contract: "PolicyProfile",
+      code: "SCHEMA_VALIDATION_FAILED",
+      messageIncludes: "PolicyProfile contract validation failed"
+    }
+  );
+});
+
+test("loadRuntimeContracts reports SemanticIR version incompatibility explicitly", () => {
+  const semanticIrWithUnsupportedVersion = {
+    ...(validSemanticIr as Record<string, unknown>),
+    schema_version: "0.2.0"
+  };
+
+  expectContractValidationError(
+    () =>
+      loadRuntimeContracts({
+        semanticIr: semanticIrWithUnsupportedVersion,
+        policyProfile: validPolicyProfile
+      }),
+    {
+      contract: "SemanticIR",
+      code: "VERSION_INCOMPATIBLE",
+      messageIncludes: 'incompatible; expected "0.1.0"'
+    }
+  );
+});
+
+test("loadRuntimeContracts reports PolicyProfile version incompatibility explicitly", () => {
+  const policyProfileWithUnsupportedVersion = {
+    ...(validPolicyProfile as Record<string, unknown>),
+    schema_version: "0.2.0"
+  };
+
+  expectContractValidationError(
+    () =>
+      loadRuntimeContracts({
+        semanticIr: validSemanticIr,
+        policyProfile: policyProfileWithUnsupportedVersion
+      }),
+    {
+      contract: "PolicyProfile",
+      code: "VERSION_INCOMPATIBLE",
+      messageIncludes: 'incompatible; expected "0.1.0"'
+    }
+  );
+});

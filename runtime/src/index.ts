@@ -32,3 +32,18 @@ export function runSemanticIr(ir: SemanticIrEnvelope): RuntimeResult {
     traceId: `trace-${version}`
   };
 }
+
+export {
+  ContractValidationError,
+  SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION,
+  SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION,
+  loadPolicyProfileContract,
+  loadRuntimeContracts,
+  loadSemanticIrContract,
+  type ContractName,
+  type ContractValidationCode,
+  type ContractValidationIssue,
+  type PolicyProfileContract,
+  type RuntimeContracts,
+  type SemanticIrContract
+} from "./contracts.ts";
