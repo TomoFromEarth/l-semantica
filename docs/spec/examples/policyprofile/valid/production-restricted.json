@@ -1,0 +1,35 @@
+{
+  "schema_version": "0.1.0",
+  "metadata": {
+    "profile_id": "policy-prod-restricted",
+    "environment": "production",
+    "created_at": "2026-02-20T18:00:00Z",
+    "source": "runtime/defaults/prod"
+  },
+  "capability_policy": {
+    "allow": ["filesystem.read", "network.http"],
+    "deny": ["filesystem.write", "shell.exec", "git.push"],
+    "escalation_requirements": {
+      "default": "manual_approval",
+      "rules": [
+        {
+          "capability": "filesystem.write",
+          "escalation_level": "team_lead",
+          "min_approvals": 1,
+          "reason_required": true
+        },
+        {
+          "capability": "git.push",
+          "escalation_level": "owner",
+          "min_approvals": 2,
+          "reason_required": true
+        }
+      ]
+    }
+  },
+  "constraints": {
+    "max_autonomous_steps": 25,
+    "max_runtime_seconds": 300,
+    "require_human_review_on_policy_violation": true
+  }
+}

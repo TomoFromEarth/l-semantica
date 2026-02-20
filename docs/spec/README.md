@@ -10,3 +10,4 @@ Language and contract specification drafts.
 ## Contracts
 
 - `docs/spec/semanticir-v0.md` - M0 SemanticIR v0 schema and fixture set
+- `docs/spec/policyprofile-v0.md` - M0 PolicyProfile v0 schema, invariants, and runtime validation contract

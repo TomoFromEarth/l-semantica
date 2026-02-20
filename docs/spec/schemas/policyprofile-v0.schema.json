@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://l-semantica.dev/spec/schemas/policyprofile-v0.schema.json",
+  "title": "PolicyProfile v0",
+  "description": "Canonical v0 contract for runtime policy and escalation controls.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "metadata", "capability_policy", "constraints"],
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0",
+      "description": "Contract version for PolicyProfile compatibility."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "environment", "created_at", "source"],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "environment": {
+          "type": "string",
+          "enum": ["development", "staging", "production"]
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "capability_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allow", "deny", "escalation_requirements"],
+      "properties": {
+        "allow": {
+          "$ref": "#/$defs/capabilityList"
+        },
+        "deny": {
+          "$ref": "#/$defs/capabilityList"
+        },
+        "escalation_requirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["default", "rules"],
+          "properties": {
+            "default": {
+              "type": "string",
+              "enum": ["none", "manual_approval"]
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/escalationRule"
+              }
+            }
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "allow": {
+              "type": "array",
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "deny": {
+              "type": "array",
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_autonomous_steps",
+        "max_runtime_seconds",
+        "require_human_review_on_policy_violation"
+      ],
+      "properties": {
+        "max_autonomous_steps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_runtime_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "require_human_review_on_policy_violation": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "capabilityName": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9._-]*$"
+    },
+    "capabilityList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/capabilityName"
+      },
+      "uniqueItems": true
+    },
+    "escalationRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "escalation_level", "min_approvals", "reason_required"],
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/capabilityName"
+        },
+        "escalation_level": {
+          "type": "string",
+          "enum": ["team_lead", "security", "owner"]
+        },
+        "min_approvals": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason_required": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["metadata"],
+        "properties": {
+          "metadata": {
+            "type": "object",
+            "required": ["environment"],
+            "properties": {
+              "environment": {
+                "const": "production"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "capability_policy": {
+            "type": "object",
+            "properties": {
+              "escalation_requirements": {
+                "type": "object",
+                "required": ["default"],
+                "properties": {
+                  "default": {
+                    "const": "manual_approval"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["capability_policy"],
+        "properties": {
+          "capability_policy": {
+            "type": "object",
+            "required": ["escalation_requirements"],
+            "properties": {
+              "escalation_requirements": {
+                "type": "object",
+                "required": ["default"],
+                "properties": {
+                  "default": {
+                    "const": "manual_approval"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "capability_policy": {
+            "type": "object",
+            "properties": {
+              "escalation_requirements": {
+                "type": "object",
+                "required": ["rules"],
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

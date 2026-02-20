@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.1.0",
+  "metadata": {
+    "profile_id": "policy-staging-rule-missing-min-approvals",
+    "environment": "staging",
+    "created_at": "2026-02-20T18:00:00Z",
+    "source": "runtime/defaults/staging"
+  },
+  "capability_policy": {
+    "allow": ["filesystem.read", "network.http"],
+    "deny": ["git.push"],
+    "escalation_requirements": {
+      "default": "manual_approval",
+      "rules": [
+        {
+          "capability": "git.push",
+          "escalation_level": "owner",
+          "reason_required": true
+        }
+      ]
+    }
+  },
+  "constraints": {
+    "max_autonomous_steps": 40,
+    "max_runtime_seconds": 450,
+    "require_human_review_on_policy_violation": true
+  }
+}
