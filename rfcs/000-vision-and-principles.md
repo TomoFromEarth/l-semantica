@@ -69,9 +69,9 @@ To move from `Proposed` to `Accepted`, all of the following are required:
 2. Secondary approver: one maintainer accountable for implementation impact (`compiler`, `runtime`, or `spec`). During solo-maintainer periods, the owner may satisfy both roles and must note dual-role approval in the acceptance record.
 3. Acceptance record in the linked issue or PR with the date (UTC), commit SHA, and confirmation that all acceptance criteria are met.
 
-## Acceptance Criteria
+### Acceptance Criteria
 RFC-000 is ready for acceptance only when all criteria below are true:
-1. This document includes `Phase 0 Deliverable Mapping` with all five Semantic Kernel deliverables and objective verification evidence.
+1. This document includes `Phase 0 Deliverable Mapping` with all five Phase 0 (Semantic Kernel) deliverables and objective verification evidence.
 2. This document includes `Decision and Approval Path` with named approver roles, lifecycle states, and acceptance-record requirements.
 3. Phase order and advancement rule are explicit: no phase advances without quality, policy, and benchmark gate completion.
 4. Phase 0 deliverables map to concrete artifacts under `/rfcs`, `/docs/spec`, `/runtime`, `/compiler`, or `/benchmarks` (implemented now or tracked as explicitly linked follow-up issues).

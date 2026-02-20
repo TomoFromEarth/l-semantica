@@ -61,7 +61,7 @@ Without stable contracts, compiler/runtime changes can break adapters, tooling, 
 ### Versioning
 - Use explicit semantic versions per contract family.
 - Breaking changes require RFC and migration notes.
-- Runtime must reject incompatible major versions.
+- Compiler, runtime, and adapters must reject incompatible major versions.
 
 Contract versions use `MAJOR.MINOR.PATCH` with the following required behavior:
 - `MAJOR`: breaking field or semantic changes. Consumers must reject artifacts with different major versions.
