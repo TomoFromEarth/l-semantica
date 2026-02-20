@@ -43,3 +43,17 @@ test("lex reports unterminated strings with source location", () => {
   assert.equal(result.diagnostics[0].range.start.line, 1);
   assert.equal(result.diagnostics[0].range.start.column, 6);
 });
+
+test("lex reports invalid escape range at the escape sequence", () => {
+  const source = String.raw`goal "bad \q escape"`; // q is intentionally invalid
+  const result = lex(source);
+
+  assert.ok(result.diagnostics.length > 0);
+  const invalidEscape = result.diagnostics.find(
+    (diagnostic) => diagnostic.code === "LEX_INVALID_ESCAPE"
+  );
+
+  assert.notEqual(invalidEscape, undefined);
+  assert.equal(invalidEscape?.range.start.line, 1);
+  assert.equal(invalidEscape?.range.start.column, 11);
+});

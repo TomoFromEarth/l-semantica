@@ -170,7 +170,6 @@ class Parser {
         "Document must start with a goal declaration",
         token
       );
-      this.skipInvalidDeclarationLine();
       return null;
     }
 
@@ -204,12 +203,18 @@ class Parser {
     }
 
     const nameToken = this.expect("Identifier", "Expected capability identifier after 'capability'");
-    const descriptionToken = this.expect("StringLiteral", "Expected a quoted string after capability identifier");
-    this.validateLineEnding("capability declaration");
-
-    if (nameToken === null || nameToken.value === undefined || descriptionToken === null || descriptionToken.value === undefined) {
+    if (nameToken === null || nameToken.value === undefined) {
+      this.consumeUntilLineBoundary();
       return null;
     }
+
+    const descriptionToken = this.expect("StringLiteral", "Expected a quoted string after capability identifier");
+    if (descriptionToken === null || descriptionToken.value === undefined) {
+      this.consumeUntilLineBoundary();
+      return null;
+    }
+
+    this.validateLineEnding("capability declaration");
 
     return {
       kind: "CapabilityDeclaration",
@@ -226,12 +231,18 @@ class Parser {
     }
 
     const nameToken = this.expect("Identifier", "Expected check identifier after 'check'");
-    const descriptionToken = this.expect("StringLiteral", "Expected a quoted string after check identifier");
-    this.validateLineEnding("check declaration");
-
-    if (nameToken === null || nameToken.value === undefined || descriptionToken === null || descriptionToken.value === undefined) {
+    if (nameToken === null || nameToken.value === undefined) {
+      this.consumeUntilLineBoundary();
       return null;
     }
+
+    const descriptionToken = this.expect("StringLiteral", "Expected a quoted string after check identifier");
+    if (descriptionToken === null || descriptionToken.value === undefined) {
+      this.consumeUntilLineBoundary();
+      return null;
+    }
+
+    this.validateLineEnding("check declaration");
 
     return {
       kind: "CheckDeclaration",

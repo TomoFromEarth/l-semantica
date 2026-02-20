@@ -67,3 +67,51 @@ test("parseLsDocument returns actionable diagnostics for unquoted goal string", 
   );
   assert.equal(result.diagnostics[0].range.start.line, 1);
 });
+
+test("parseLsDocument does not discard declarations when goal is missing", () => {
+  const source =
+    'capability retrieve_docs "read local docs"\n' +
+    'check include_references "response includes references"';
+  const result = parseLsDocument(source);
+
+  assert.equal(result.ast, null);
+  assert.ok(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.message.includes("Document must start with a goal declaration")
+    )
+  );
+  assert.equal(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.message.includes("at least one capability declaration")
+    ),
+    false
+  );
+  assert.equal(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.message.includes("at least one check declaration")
+    ),
+    false
+  );
+});
+
+test("parseLsDocument avoids cascading capability diagnostics when identifier is missing", () => {
+  const source =
+    'goal "ship parser"\n' +
+    'capability "missing id"\n' +
+    'check include_references "response includes references"';
+  const result = parseLsDocument(source);
+
+  assert.equal(result.ast, null);
+  assert.equal(
+    result.diagnostics.filter((diagnostic) =>
+      diagnostic.message.includes("Expected capability identifier")
+    ).length,
+    1
+  );
+  assert.equal(
+    result.diagnostics.filter((diagnostic) =>
+      diagnostic.message.includes("Expected a quoted string after capability identifier")
+    ).length,
+    0
+  );
+});

@@ -174,6 +174,7 @@ export function lex(input: string): LexResult {
         }
 
         if (char === "\\") {
+          const escapeStart = currentPosition();
           lexeme += advance();
           const escaped = currentChar();
           if (escaped === undefined) {
@@ -186,7 +187,7 @@ export function lex(input: string): LexResult {
             addDiagnostic(
               "LEX_INVALID_ESCAPE",
               `Invalid string escape sequence "\\${escaped}"`,
-              start,
+              escapeStart,
               currentPosition()
             );
           } else {
