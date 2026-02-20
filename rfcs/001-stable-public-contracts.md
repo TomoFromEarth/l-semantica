@@ -24,29 +24,29 @@ Without stable contracts, compiler/runtime changes can break adapters, tooling, 
 ## Proposal
 ### Contract Set
 1. `SemanticIR`
-- Canonical framework-agnostic execution and compilation graph.
-- Separates deterministic nodes from stochastic inference nodes.
-- Captures dependencies, constraints, and trace anchors.
+   - Canonical framework-agnostic execution and compilation graph.
+   - Separates deterministic nodes from stochastic inference nodes.
+   - Captures dependencies, constraints, and trace anchors.
 
 2. `FeedbackTensor`
-- Normalized payload for failures, repair hypotheses, confidence, and memory.
-- Inputs reliability and repair loops.
+   - Normalized payload for failures, repair hypotheses, confidence, and memory.
+   - Inputs reliability and repair loops.
 
 3. `PolicyProfile`
-- Environment-aware safety, approval, and compliance constraints.
-- Defines allowed capabilities and escalation requirements.
+   - Environment-aware safety, approval, and compliance constraints.
+   - Defines allowed capabilities and escalation requirements.
 
 4. `VerificationContract`
-- Required checks for autonomous continuation.
-- Includes tests, static analysis rules, policy assertions, and acceptance thresholds.
+   - Required checks for autonomous continuation.
+   - Includes tests, static analysis rules, policy assertions, and acceptance thresholds.
 
 5. `TargetAdapter`
-- Input: `SemanticIR` + project constraints + ecosystem profile.
-- Output: human-owned source artifacts + build metadata + traceability map.
+   - Input: `SemanticIR` + project constraints + ecosystem profile.
+   - Output: human-owned source artifacts + build metadata + traceability map.
 
 6. `CapabilityManifest`
-- Declares each adapter/runtime capability surface.
-- Enables compile-time and runtime capability validation.
+   - Declares each adapter/runtime capability surface.
+   - Enables compile-time and runtime capability validation.
 
 ### Versioning
 - Use explicit semantic versions per contract family.
