@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 
-import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
+import type { ErrorObject, ValidateFunction } from "ajv/dist/2020.js";
 
 export interface SemanticIrContract {
   schema_version: string;
@@ -76,11 +77,50 @@ export class ContractValidationError extends Error {
 export const SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION = "0.1.0";
 export const SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION = "0.1.0";
 
-const ajv = new Ajv2020({ allErrors: true });
-const semanticIrSchema = loadSchema("../../docs/spec/schemas/semanticir-v0.schema.json");
-const policyProfileSchema = loadSchema("../../docs/spec/schemas/policyprofile-v0.schema.json");
-const validateSemanticIr = ajv.compile(semanticIrSchema);
-const validatePolicyProfile = ajv.compile(policyProfileSchema);
+type Ajv2020Constructor = new (options: { allErrors: boolean }) => {
+  compile(schema: object): ValidateFunction;
+};
+
+interface ContractValidators {
+  validateSemanticIr: ValidateFunction;
+  validatePolicyProfile: ValidateFunction;
+}
+
+const require = createRequire(import.meta.url);
+const Ajv2020 = resolveAjv2020Constructor();
+let contractValidators: ContractValidators | null = null;
+
+function resolveAjv2020Constructor(): Ajv2020Constructor {
+  const moduleValue = require("ajv/dist/2020.js") as
+    | Ajv2020Constructor
+    | { default?: Ajv2020Constructor; Ajv2020?: Ajv2020Constructor };
+
+  if (typeof moduleValue === "function") {
+    return moduleValue;
+  }
+  if (moduleValue.default && typeof moduleValue.default === "function") {
+    return moduleValue.default;
+  }
+  if (moduleValue.Ajv2020 && typeof moduleValue.Ajv2020 === "function") {
+    return moduleValue.Ajv2020;
+  }
+
+  throw new Error("Unable to resolve Ajv2020 constructor");
+}
+
+function getContractValidators(): ContractValidators {
+  if (contractValidators) {
+    return contractValidators;
+  }
+
+  const ajv = new Ajv2020({ allErrors: true });
+  contractValidators = {
+    validateSemanticIr: ajv.compile(loadSchema("../../docs/spec/schemas/semanticir-v0.schema.json")),
+    validatePolicyProfile: ajv.compile(loadSchema("../../docs/spec/schemas/policyprofile-v0.schema.json"))
+  };
+
+  return contractValidators;
+}
 
 function loadSchema(relativePathFromContractsSource: string): object {
   const fileContents = readFileSync(new URL(relativePathFromContractsSource, import.meta.url), "utf8");
@@ -171,6 +211,7 @@ function validateContract(
 
 export function loadSemanticIrContract(input: unknown): SemanticIrContract {
   const candidate = requireRecord(input, "SemanticIR");
+  const { validateSemanticIr } = getContractValidators();
   requireCompatibleSchemaVersion("SemanticIR", candidate, SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION);
   validateContract("SemanticIR", validateSemanticIr, candidate);
   return candidate as unknown as SemanticIrContract;
@@ -178,6 +219,7 @@ export function loadSemanticIrContract(input: unknown): SemanticIrContract {
 
 export function loadPolicyProfileContract(input: unknown): PolicyProfileContract {
   const candidate = requireRecord(input, "PolicyProfile");
+  const { validatePolicyProfile } = getContractValidators();
   requireCompatibleSchemaVersion("PolicyProfile", candidate, SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION);
   validateContract("PolicyProfile", validatePolicyProfile, candidate);
   return candidate as unknown as PolicyProfileContract;
