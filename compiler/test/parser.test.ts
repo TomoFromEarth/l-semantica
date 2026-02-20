@@ -1,0 +1,69 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+import { parseLsDocument } from "../src/index.ts";
+
+const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+
+function loadSpecExample(relativePath: string): string {
+  return readFileSync(path.resolve(testDirectory, "../../docs/spec/examples", relativePath), "utf8");
+}
+
+test("parseLsDocument parses minimal valid example into AST root", () => {
+  const source = loadSpecExample("valid/minimal-goal-capability-check.ls");
+  const result = parseLsDocument(source);
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.notEqual(result.ast, null);
+
+  const ast = result.ast;
+  assert.equal(ast?.kind, "Document");
+  assert.equal(ast?.goal.value, "answer user requests with grounded output");
+  assert.equal(ast?.capabilities.length, 1);
+  assert.equal(ast?.capabilities[0]?.name, "retrieve_docs");
+  assert.equal(ast?.checks.length, 1);
+  assert.equal(ast?.checks[0]?.name, "include_references");
+});
+
+test("parseLsDocument parses multi declaration valid example", () => {
+  const source = loadSpecExample("valid/multi-capability-check.ls");
+  const result = parseLsDocument(source);
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.notEqual(result.ast, null);
+  assert.equal(result.ast?.capabilities.length, 2);
+  assert.equal(result.ast?.checks.length, 2);
+});
+
+test("parseLsDocument returns actionable diagnostics for missing goal", () => {
+  const source = loadSpecExample("invalid/missing-goal.ls");
+  const result = parseLsDocument(source);
+
+  assert.equal(result.ast, null);
+  assert.ok(result.diagnostics.length > 0);
+  assert.ok(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.message.includes("goal declaration")
+    )
+  );
+  assert.ok(
+    result.diagnostics.every((diagnostic) => diagnostic.range.start.line >= 1)
+  );
+});
+
+test("parseLsDocument returns actionable diagnostics for unquoted goal string", () => {
+  const source = loadSpecExample("invalid/unquoted-goal-string.ls");
+  const result = parseLsDocument(source);
+
+  assert.equal(result.ast, null);
+  assert.ok(result.diagnostics.length > 0);
+  assert.ok(
+    result.diagnostics.some((diagnostic) =>
+      diagnostic.message.includes("quoted string after 'goal'")
+    )
+  );
+  assert.equal(result.diagnostics[0].range.start.line, 1);
+});
