@@ -7,7 +7,9 @@ Before `1.0.0`, any release (minor or patch) may include breaking changes.
 
 ## [Unreleased]
 ### Added
-- No entries yet.
+- M1 reliability fixture corpus for known failure classes under `benchmarks/fixtures/reliability/failure-corpus.v0.json`, including recoverable and non-recoverable expectations.
+- Benchmark reliability corpus loader/validator module (`benchmarks/reliability-corpus.mjs`) with machine-readable schema and enum checks.
+- Runtime CI test coverage for reliability corpus loadability and class/recoverability coverage guarantees (`runtime/test/reliability-corpus.test.ts`).
 
 ## [0.1.0] - 2026-02-21
 ### Added

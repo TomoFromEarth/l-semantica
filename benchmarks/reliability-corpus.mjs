@@ -1,0 +1,154 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+export const RELIABILITY_CORPUS_SCHEMA_VERSION = "0.1.0";
+export const RELIABILITY_FAILURE_CLASSES = [
+  "parse",
+  "schema_contract",
+  "policy_gate",
+  "capability_denied",
+  "deterministic_runtime",
+  "stochastic_extraction_uncertainty"
+];
+
+const RECOVERABILITY_VALUES = ["recoverable", "non_recoverable"];
+const INPUT_STAGES = ["compile", "contract_load", "policy_gate", "runtime", "extraction"];
+const INPUT_ARTIFACTS = [
+  "ls_source",
+  "semantic_ir",
+  "policy_profile",
+  "capability_manifest",
+  "runtime_event",
+  "model_output"
+];
+
+function assertObject(value, path) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`Reliability corpus field ${path} must be an object`);
+  }
+
+  return value;
+}
+
+function assertNonEmptyString(value, path) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`Reliability corpus field ${path} must be a non-empty string`);
+  }
+
+  return value.trim();
+}
+
+function assertEnum(value, values, path) {
+  const normalized = assertNonEmptyString(value, path);
+  if (!values.includes(normalized)) {
+    throw new Error(
+      `Reliability corpus field ${path} must be one of: ${values.join(", ")}; received "${normalized}"`
+    );
+  }
+
+  return normalized;
+}
+
+function assertBoolean(value, path) {
+  if (typeof value !== "boolean") {
+    throw new Error(`Reliability corpus field ${path} must be a boolean`);
+  }
+
+  return value;
+}
+
+function validateFixture(candidate, fixtureIndex, seenIds) {
+  const fixture = assertObject(candidate, `fixtures[${fixtureIndex}]`);
+  const fixturePath = `fixtures[${fixtureIndex}]`;
+
+  const id = assertNonEmptyString(fixture.id, `${fixturePath}.id`);
+  if (seenIds.has(id)) {
+    throw new Error(`Reliability corpus fixture id "${id}" must be unique`);
+  }
+
+  seenIds.add(id);
+
+  const failureClass = assertEnum(
+    fixture.failure_class,
+    RELIABILITY_FAILURE_CLASSES,
+    `${fixturePath}.failure_class`
+  );
+
+  assertNonEmptyString(fixture.scenario, `${fixturePath}.scenario`);
+  assertEnum(fixture.recoverability, RECOVERABILITY_VALUES, `${fixturePath}.recoverability`);
+
+  const expected = assertObject(fixture.expected, `${fixturePath}.expected`);
+  const expectedClassification = assertEnum(
+    expected.classification,
+    RELIABILITY_FAILURE_CLASSES,
+    `${fixturePath}.expected.classification`
+  );
+  assertBoolean(expected.continuation_allowed, `${fixturePath}.expected.continuation_allowed`);
+
+  if (expectedClassification !== failureClass) {
+    throw new Error(
+      `Reliability corpus fixture "${id}" expected.classification must match failure_class`
+    );
+  }
+
+  const input = assertObject(fixture.input, `${fixturePath}.input`);
+  assertEnum(input.stage, INPUT_STAGES, `${fixturePath}.input.stage`);
+  assertEnum(input.artifact, INPUT_ARTIFACTS, `${fixturePath}.input.artifact`);
+  assertNonEmptyString(input.excerpt, `${fixturePath}.input.excerpt`);
+}
+
+export function validateReliabilityFixtureCorpus(corpus) {
+  const candidate = assertObject(corpus, "corpus");
+
+  const schemaVersion = assertNonEmptyString(candidate.schema_version, "schema_version");
+  if (schemaVersion !== RELIABILITY_CORPUS_SCHEMA_VERSION) {
+    throw new Error(
+      `Reliability corpus schema_version "${schemaVersion}" is incompatible; expected "${RELIABILITY_CORPUS_SCHEMA_VERSION}"`
+    );
+  }
+
+  assertNonEmptyString(candidate.corpus_id, "corpus_id");
+  assertNonEmptyString(candidate.description, "description");
+
+  if (!Array.isArray(candidate.fixtures) || candidate.fixtures.length === 0) {
+    throw new Error("Reliability corpus fixtures must be a non-empty array");
+  }
+
+  const seenIds = new Set();
+  for (let index = 0; index < candidate.fixtures.length; index += 1) {
+    validateFixture(candidate.fixtures[index], index, seenIds);
+  }
+}
+
+function resolveCorpusPath(pathOrUndefined) {
+  const scriptDirectory = fileURLToPath(new URL(".", import.meta.url));
+  if (typeof pathOrUndefined !== "string" || pathOrUndefined.trim().length === 0) {
+    return resolve(scriptDirectory, "fixtures/reliability/failure-corpus.v0.json");
+  }
+
+  return resolve(process.cwd(), pathOrUndefined);
+}
+
+export function loadReliabilityFixtureCorpus(options = {}) {
+  const normalizedOptions =
+    typeof options === "object" && options !== null && !Array.isArray(options) ? options : {};
+
+  const corpusPath = resolveCorpusPath(normalizedOptions.corpusPath);
+  const source = readFileSync(corpusPath, "utf8");
+
+  let parsed;
+  try {
+    parsed = JSON.parse(source);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse reliability corpus JSON at ${corpusPath}: ${message}`);
+  }
+
+  validateReliabilityFixtureCorpus(parsed);
+
+  return {
+    corpusPath,
+    corpus: parsed
+  };
+}
