@@ -68,6 +68,24 @@ test("repair loop enforces bounded retries for deterministic timeout failures", 
   );
 });
 
+test("repair loop preserves excerpt boundary whitespace during repair", () => {
+  const result = runRepair(
+    {
+      failureClass: "deterministic_runtime",
+      stage: "runtime",
+      artifact: "runtime_event",
+      excerpt: "  step=resolve_manifest; error=timeout; retryable=true\n"
+    },
+    2
+  );
+
+  assert.equal(result.decision, "repaired");
+  assert.equal(
+    result.repairedExcerpt,
+    "  step=resolve_manifest; error=none; retryable=false\n"
+  );
+});
+
 test("repair loop stops when retry budget is exhausted", () => {
   const result = runRepair(
     {

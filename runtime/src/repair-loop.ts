@@ -107,7 +107,11 @@ function requireRecord(value: unknown, path: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function requireNonEmptyString(value: unknown, path: string): string {
+function requireNonEmptyString(
+  value: unknown,
+  path: string,
+  options: { preserveWhitespace?: boolean } = {}
+): string {
   if (typeof value !== "string") {
     throw new Error(`${path} must be a non-empty string`);
   }
@@ -117,7 +121,7 @@ function requireNonEmptyString(value: unknown, path: string): string {
     throw new Error(`${path} must be a non-empty string`);
   }
 
-  return trimmed;
+  return options.preserveWhitespace ? value : trimmed;
 }
 
 function requireEnumValue<T extends readonly string[]>(
@@ -140,7 +144,7 @@ function normalizeRepairLoopInput(input: unknown): NormalizedRepairLoopInput {
     failureClass: requireEnumValue(candidate.failureClass, REPAIR_FAILURE_CLASSES, "failureClass"),
     stage: requireEnumValue(candidate.stage, REPAIR_STAGES, "stage"),
     artifact: requireEnumValue(candidate.artifact, REPAIR_ARTIFACTS, "artifact"),
-    excerpt: requireNonEmptyString(candidate.excerpt, "excerpt")
+    excerpt: requireNonEmptyString(candidate.excerpt, "excerpt", { preserveWhitespace: true })
   };
 }
 
