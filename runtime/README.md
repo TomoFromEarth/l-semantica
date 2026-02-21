@@ -21,6 +21,8 @@ Execution engine, policy enforcement, and replay support.
 - `runRuleFirstRepairLoop(input, options)` executes deterministic rule-first repair over known M1 failure classes.
 - Rule order is stable and exported as `RULE_FIRST_REPAIR_ORDER`.
 - Retry behavior is bounded by `options.maxAttempts` (default `2`, hard cap `10`).
+- FeedbackTensor emission is opt-in via `options.feedbackTensorPath` and emits one terminal repair outcome record per invocation.
+- Repair FeedbackTensor emission supports run-linkage fields via `options.runId` (or `options.runIdFactory`) and optional `options.traceEntryId`.
 - Terminal outcomes are explicit and reason-coded:
   - `repaired`: deterministic recovery succeeded and `continuationAllowed` is `true`.
   - `escalate`: no safe deterministic repair path exists and human escalation is required.
@@ -29,8 +31,10 @@ Execution engine, policy enforcement, and replay support.
 ## Trace Ledger
 - `runSemanticIr(ir, options)` emits one trace ledger entry per invocation.
 - Set `options.traceLedgerPath` to append JSON-lines records to a file.
+- Set `options.feedbackTensorPath` to append FeedbackTensor v1 JSON-lines records for failed runtime invocations.
 - Trace ledger emission is best-effort: write failures do not fail `runSemanticIr`.
-- Trace hook evaluation (`runIdFactory`, `now`) occurs only when `traceLedgerPath` is enabled.
+- FeedbackTensor emission is best-effort: write failures do not fail `runSemanticIr` or `runRuleFirstRepairLoop`.
+- Hook evaluation (`runIdFactory`, `now`) occurs only when trace or feedback emission is enabled.
 - `run_id` is normalized to a non-empty value before emission.
 - Timestamp hooks are best-effort: invalid/throwing `options.now` values fall back to runtime clock time.
 - Each entry includes:
