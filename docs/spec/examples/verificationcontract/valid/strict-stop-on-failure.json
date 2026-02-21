@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0.0",
+  "contract_id": "verification-core-stop-on-failure",
+  "generated_at": "2026-02-21T16:30:00Z",
+  "requirements": {
+    "tests": [
+      {
+        "id": "runtime.contract-loader",
+        "description": "Runtime contract loader tests pass",
+        "required": true
+      },
+      {
+        "id": "runtime.feedbacktensor-schema",
+        "description": "FeedbackTensor schema fixture tests pass",
+        "required": true
+      }
+    ],
+    "static_analysis": [
+      {
+        "id": "workspace.lint",
+        "description": "Workspace lint succeeds",
+        "required": true
+      },
+      {
+        "id": "workspace.typecheck",
+        "description": "Workspace typecheck succeeds",
+        "required": true
+      }
+    ],
+    "policy_assertions": [
+      {
+        "id": "policy.production.manual-approval-default",
+        "policy_path": "capability_policy.escalation_requirements.default",
+        "expected": "manual_approval",
+        "required": true,
+        "rationale": "Production continuation must require manual approval by default"
+      }
+    ]
+  },
+  "pass_criteria": {
+    "minimum_required_checks_pass_ratio": 1,
+    "require_all_policy_assertions": true,
+    "max_warning_count": 0
+  },
+  "continuation": {
+    "on_success": "continue",
+    "on_failure": "stop",
+    "require_policy_profile": true,
+    "required_feedback_tensor_fields": [
+      "failure_signal",
+      "confidence",
+      "provenance"
+    ]
+  }
+}

@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://l-semantica.dev/spec/schemas/verificationcontract-v1.schema.json",
+  "title": "VerificationContract v1",
+  "description": "Canonical v1 contract for verification-gated autonomous continuation requirements.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_id",
+    "generated_at",
+    "requirements",
+    "pass_criteria",
+    "continuation"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0",
+      "description": "Contract version for VerificationContract compatibility."
+    },
+    "contract_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:(?:[0-5]\\d|60)(?:\\.\\d+)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tests", "static_analysis", "policy_assertions"],
+      "properties": {
+        "tests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/checkRequirement"
+          },
+          "contains": {
+            "type": "object",
+            "required": ["required"],
+            "properties": {
+              "required": {
+                "const": true
+              }
+            }
+          },
+          "minContains": 1
+        },
+        "static_analysis": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/checkRequirement"
+          },
+          "contains": {
+            "type": "object",
+            "required": ["required"],
+            "properties": {
+              "required": {
+                "const": true
+              }
+            }
+          },
+          "minContains": 1
+        },
+        "policy_assertions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/policyAssertion"
+          },
+          "contains": {
+            "type": "object",
+            "required": ["required"],
+            "properties": {
+              "required": {
+                "const": true
+              }
+            }
+          },
+          "minContains": 1
+        }
+      }
+    },
+    "pass_criteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_required_checks_pass_ratio",
+        "require_all_policy_assertions",
+        "max_warning_count"
+      ],
+      "properties": {
+        "minimum_required_checks_pass_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "require_all_policy_assertions": {
+          "type": "boolean"
+        },
+        "max_warning_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "continuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "on_success",
+        "on_failure",
+        "require_policy_profile",
+        "required_feedback_tensor_fields"
+      ],
+      "properties": {
+        "on_success": {
+          "type": "string",
+          "enum": ["continue"]
+        },
+        "on_failure": {
+          "type": "string",
+          "enum": ["escalate", "stop"]
+        },
+        "require_policy_profile": {
+          "type": "boolean"
+        },
+        "required_feedback_tensor_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "failure_signal",
+              "confidence",
+              "alternatives",
+              "proposed_repair_action",
+              "provenance"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "checkRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "required"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "policyAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "policy_path", "expected", "required"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

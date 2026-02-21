@@ -6,13 +6,14 @@ Execution engine, policy enforcement, and replay support.
 - `docs/spec/semanticir-v0.md`
 - `docs/spec/policyprofile-v0.md`
 - `docs/spec/feedbacktensor-v1.md`
+- `docs/spec/verificationcontract-v1.md`
 - `docs/spec/trace-ledger-v0.md`
 
 ## Contract Loader
-- `loadRuntimeContracts(input)` validates `semanticIr` and `policyProfile` payloads against v0 schemas.
+- `loadRuntimeContracts(input)` validates `semanticIr`, `policyProfile`, and `verificationContract` payloads against published schema versions.
 - Validation failures use `ContractValidationError` with:
   - `code`: `INVALID_INPUT`, `SCHEMA_VALIDATION_FAILED`, or `VERSION_INCOMPATIBLE`
-  - `contract`: `RuntimeContracts`, `SemanticIR`, or `PolicyProfile`
+  - `contract`: `RuntimeContracts`, `SemanticIR`, `PolicyProfile`, or `VerificationContract`
   - `issues`: field-level validation details (`instancePath`, `keyword`, `message`)
 - Setup failures (for example unreadable schema files or resolver initialization failures) may throw standard `Error`.
 
