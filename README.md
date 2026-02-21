@@ -48,6 +48,7 @@ pnpm test
 ### Project References
 - `rfcs/README.md`
 - `docs/spec/README.md`
+- `CHANGELOG.md`
 - `CONTRIBUTING.md`
 - `GOVERNANCE.md`
 
