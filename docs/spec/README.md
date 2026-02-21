@@ -11,4 +11,5 @@ Language and contract specification drafts.
 
 - `docs/spec/semanticir-v0.md` - M0 SemanticIR v0 schema and fixture set
 - `docs/spec/policyprofile-v0.md` - M0 PolicyProfile v0 schema, invariants, and runtime validation contract
+- `docs/spec/feedbacktensor-v1.md` - M1 FeedbackTensor v1 schema, compatibility notes, and fixture set
 - `docs/spec/trace-ledger-v0.md` - M0 runtime trace ledger v0 schema and emission contract

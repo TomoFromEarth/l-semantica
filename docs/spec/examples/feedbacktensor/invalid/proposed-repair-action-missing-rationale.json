@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0.0",
+  "feedback_id": "ft-invalid-003",
+  "generated_at": "2026-02-21T13:36:00Z",
+  "failure_signal": {
+    "class": "stochastic_extraction_uncertainty",
+    "stage": "repair",
+    "summary": "Extraction confidence below continuation threshold.",
+    "continuation_allowed": true,
+    "error_code": "LOW_EXTRACTION_CONFIDENCE"
+  },
+  "confidence": {
+    "score": 0.41,
+    "rationale": "Multiple plausible interpretations remain unresolved.",
+    "calibration_band": "low"
+  },
+  "alternatives": [
+    {
+      "id": "alt-narrow-prompt",
+      "hypothesis": "Add stricter output constraints and rerun extraction.",
+      "expected_outcome": "Confidence may increase for deterministic post-validation.",
+      "estimated_success_probability": 0.58
+    }
+  ],
+  "proposed_repair_action": {
+    "action": "adjust_prompt",
+    "requires_human_approval": false,
+    "target": "extractor.prompt.template"
+  },
+  "provenance": {
+    "run_id": "run-invalid-003",
+    "source_stage": "repair_loop",
+    "trace_entry_id": "trace-invalid-003",
+    "contract_versions": {
+      "semantic_ir": "0.1.0",
+      "policy_profile": "0.1.0",
+      "feedback_tensor": "1.0.0"
+    }
+  }
+}

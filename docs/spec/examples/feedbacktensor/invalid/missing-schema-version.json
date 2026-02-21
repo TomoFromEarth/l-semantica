@@ -1,0 +1,35 @@
+{
+  "feedback_id": "ft-invalid-001",
+  "generated_at": "2026-02-21T13:34:00Z",
+  "failure_signal": {
+    "class": "schema_contract",
+    "stage": "runtime",
+    "summary": "Payload omitted schema_version.",
+    "continuation_allowed": false
+  },
+  "confidence": {
+    "score": 0.7,
+    "rationale": "Shape otherwise resembles FeedbackTensor."
+  },
+  "alternatives": [
+    {
+      "id": "alt-add-version",
+      "hypothesis": "Add missing schema_version field.",
+      "expected_outcome": "Version gate can be evaluated."
+    }
+  ],
+  "proposed_repair_action": {
+    "action": "abort",
+    "rationale": "Contract version must be explicit before processing.",
+    "requires_human_approval": false
+  },
+  "provenance": {
+    "run_id": "run-invalid-001",
+    "source_stage": "runtime",
+    "contract_versions": {
+      "semantic_ir": "0.1.0",
+      "policy_profile": "0.1.0",
+      "feedback_tensor": "1.0.0"
+    }
+  }
+}

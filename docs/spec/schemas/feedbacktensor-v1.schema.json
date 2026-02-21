@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://l-semantica.dev/spec/schemas/feedbacktensor-v1.schema.json",
+  "title": "FeedbackTensor v1",
+  "description": "Canonical v1 contract for normalized runtime failure, confidence, repair, and provenance payloads.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "feedback_id",
+    "generated_at",
+    "failure_signal",
+    "confidence",
+    "alternatives",
+    "proposed_repair_action",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0",
+      "description": "Contract version for FeedbackTensor compatibility."
+    },
+    "feedback_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "failure_signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "stage", "summary", "continuation_allowed"],
+      "properties": {
+        "class": {
+          "type": "string",
+          "enum": [
+            "parse",
+            "schema_contract",
+            "policy_gate",
+            "capability_denied",
+            "deterministic_runtime",
+            "stochastic_extraction_uncertainty"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["compile", "runtime", "policy", "capability", "repair"]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "continuation_allowed": {
+          "type": "boolean"
+        },
+        "error_code": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "rationale"],
+      "properties": {
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "calibration_band": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        }
+      }
+    },
+    "alternatives": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/alternative"
+      }
+    },
+    "proposed_repair_action": {
+      "$ref": "#/$defs/proposedRepairAction"
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "source_stage", "contract_versions"],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_stage": {
+          "type": "string",
+          "enum": ["runtime", "repair_loop", "policy_gate"]
+        },
+        "trace_entry_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contract_versions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["semantic_ir", "policy_profile", "feedback_tensor"],
+          "properties": {
+            "semantic_ir": {
+              "type": "string",
+              "minLength": 1
+            },
+            "policy_profile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "feedback_tensor": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "hypothesis", "expected_outcome"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hypothesis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_outcome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "estimated_success_probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "proposedRepairAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "rationale", "requires_human_approval"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["retry_with_patch", "adjust_prompt", "request_manual_review", "abort"]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requires_human_approval": {
+          "type": "boolean"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "patch_excerpt": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
