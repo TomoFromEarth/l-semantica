@@ -26,3 +26,6 @@ Before `1.0.0`, any release (minor or patch) may include breaking changes.
 - Milestone: M0 complete.
 - Open issues: 0.
 - Open pull requests: 0.
+
+[Unreleased]: https://github.com/TomoFromEarth/l-semantica/compare/7bb5b7da5b6f873dcec16c41841285ce367dc8eb...HEAD
+[0.1.0]: https://github.com/TomoFromEarth/l-semantica/commit/7bb5b7da5b6f873dcec16c41841285ce367dc8eb
