@@ -56,7 +56,7 @@ Each phase must pass explicit quality, policy, and benchmark gates before advanc
 | Deliverable | Definition of Done | Verification Evidence |
 | --- | --- | --- |
 | `.ls` grammar (v0) | Grammar is documented and parser accepts baseline examples with source spans in diagnostics. | RFC/spec section plus parser tests for valid/invalid samples. |
-| `SemanticIR` (v1) | Canonical IR shape is versioned and distinguishes deterministic vs stochastic nodes. | Versioned schema draft and lowering-path fixture tests. |
+| `SemanticIR` (v1 target; current baseline artifacts are v0) | Canonical IR shape is versioned and distinguishes deterministic vs stochastic nodes. | Versioned schema draft, migration note from v0 to v1 (or explicit defer record), and lowering-path fixture tests. |
 | Runtime `v0` | Runtime executes baseline deterministic workflows with policy hooks and non-invasive trace emission. | Runtime execution tests, policy-gate tests, and replay baseline tests. |
 | `FeedbackTensor` (v1) | Failure/repair/confidence payload contract is versioned and consumable by repair loops. | Versioned schema draft and serialization round-trip tests. |
 | Persistent trace ledger | Runtime writes machine-readable invocation trace entries using a versioned contract. | Ledger schema, runtime emission tests, and failure-path emission coverage. |

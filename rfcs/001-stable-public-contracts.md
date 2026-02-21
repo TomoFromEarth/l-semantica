@@ -65,7 +65,7 @@ Without stable contracts, compiler/runtime changes can break adapters, tooling, 
 
 Contract versions use `MAJOR.MINOR.PATCH` with the following required behavior:
 - `MAJOR`: breaking field or semantic changes. Consumers must reject artifacts with different major versions.
-- `MINOR`: additive, backwards-compatible changes. Consumers that support minor `N` must accept all artifacts in the same major with minor `<= N`.
+- `MINOR`: additive, backwards-compatible changes. Compatibility direction is backward-only by default: a consumer supporting minor `N` must accept artifacts in the same major with minor `<= N`; support for newer minors (`> N`) is optional unless explicitly declared.
 - `PATCH`: non-breaking corrections/clarifications that do not change compatibility semantics.
 
 ### Compatibility Rules
