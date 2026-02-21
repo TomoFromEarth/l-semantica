@@ -26,7 +26,7 @@ function parseArgs(argv) {
     const arg = argv[index];
 
     if (arg === "--") {
-      continue;
+      break;
     }
 
     if (arg === "--config") {
@@ -65,12 +65,31 @@ function requireTaskList(config) {
     throw new Error("Benchmark config must be an object");
   }
 
+  const schemaVersion = config.schema_version;
+  if (typeof schemaVersion !== "string" || schemaVersion.trim().length === 0) {
+    throw new Error("Benchmark config schema_version must be a non-empty string");
+  }
+
+  if (schemaVersion !== REPORT_SCHEMA_VERSION) {
+    throw new Error(
+      `Benchmark config schema_version "${schemaVersion}" is incompatible; expected "${REPORT_SCHEMA_VERSION}"`
+    );
+  }
+
   const tasks = config.tasks;
   if (!Array.isArray(tasks) || tasks.length === 0) {
     throw new Error("Benchmark config must include at least one task");
   }
 
   return tasks;
+}
+
+function resolveCliPath(pathOrUndefined, defaultRelativePath, scriptDirectory) {
+  if (typeof pathOrUndefined !== "string" || pathOrUndefined.trim().length === 0) {
+    return resolve(scriptDirectory, defaultRelativePath);
+  }
+
+  return resolve(process.cwd(), pathOrUndefined);
 }
 
 function requireTaskField(task, fieldName) {
@@ -132,8 +151,12 @@ function main() {
   const scriptDirectory = fileURLToPath(new URL(".", import.meta.url));
   const projectRoot = resolve(scriptDirectory, "..");
   const options = parseArgs(process.argv.slice(2));
-  const configPath = resolve(scriptDirectory, options.configPath ?? "tasks.json");
-  const outputPath = resolve(scriptDirectory, options.outputPath ?? "reports/token-efficiency-report.json");
+  const configPath = resolveCliPath(options.configPath, "tasks.json", scriptDirectory);
+  const outputPath = resolveCliPath(
+    options.outputPath,
+    "reports/token-efficiency-report.json",
+    scriptDirectory
+  );
 
   const config = parseJsonFile(configPath);
   const tasks = requireTaskList(config);

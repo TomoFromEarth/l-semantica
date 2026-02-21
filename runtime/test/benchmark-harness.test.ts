@@ -19,6 +19,12 @@ interface BenchmarkReport {
   results: BenchmarkTaskResult[];
 }
 
+interface BenchmarkCliOutput {
+  ok: boolean;
+  report_path: string;
+  task_count: number;
+}
+
 test("benchmark harness CLI emits structured report with encoded ratio formula", () => {
   const testDirectory = fileURLToPath(new URL(".", import.meta.url));
   const repoRoot = resolve(testDirectory, "../..");
@@ -27,19 +33,24 @@ test("benchmark harness CLI emits structured report with encoded ratio formula",
   const outputPath = resolve(tmpRoot, "token-efficiency-report.json");
 
   try {
-    execFileSync("node", [harnessPath, "--out", outputPath], {
+    const rawStdout = execFileSync("node", [harnessPath, "--out", outputPath], {
       cwd: repoRoot,
-      stdio: "pipe"
+      stdio: "pipe",
+      encoding: "utf8"
     });
+    const cliOutput = JSON.parse(rawStdout) as BenchmarkCliOutput;
 
     assert.equal(existsSync(outputPath), true);
+    assert.equal(cliOutput.ok, true);
+    assert.equal(cliOutput.report_path, outputPath);
+    assert.equal(cliOutput.task_count >= 1, true);
 
     const report = JSON.parse(readFileSync(outputPath, "utf8")) as BenchmarkReport;
     assert.equal(report.schema_version, "0.1.0");
     assert.equal(report.report_path, outputPath);
     assert.equal(report.formula, "efficiency_ratio = baseline_tokens / ls_tokens");
     assert.equal(Array.isArray(report.results), true);
-    assert.equal(report.results.length >= 1, true);
+    assert.equal(report.results.length, cliOutput.task_count);
 
     const firstResult = report.results[0];
     assert.equal(firstResult.baseline_tokens > 0, true);

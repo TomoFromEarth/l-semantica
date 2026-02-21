@@ -13,8 +13,11 @@ pnpm bench:run
 Optional flags:
 
 ```bash
-node benchmarks/run-harness.mjs --config tasks.json --out reports/token-efficiency-report.json
+node benchmarks/run-harness.mjs --config benchmarks/tasks.json --out benchmarks/reports/token-efficiency-report.json
 ```
+
+Flag path behavior:
+- `--config` and `--out` are resolved from the current working directory.
 
 Defaults:
 - task list: `benchmarks/tasks.json`
