@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0.0",
+  "feedback_id": "ft-policy-001",
+  "generated_at": "2026-02-21T13:32:00Z",
+  "failure_signal": {
+    "class": "policy_gate",
+    "stage": "policy",
+    "summary": "Requested capability is denied for the active production profile.",
+    "continuation_allowed": false,
+    "error_code": "POLICY_CAPABILITY_DENIED"
+  },
+  "confidence": {
+    "score": 0.98,
+    "rationale": "Policy profile deny-list explicitly blocks filesystem.write.",
+    "calibration_band": "high"
+  },
+  "alternatives": [
+    {
+      "id": "alt-manual-review",
+      "hypothesis": "Escalate to manual approval with documented justification.",
+      "expected_outcome": "Operation remains blocked until required approvals are recorded.",
+      "estimated_success_probability": 0.9
+    },
+    {
+      "id": "alt-abort",
+      "hypothesis": "Terminate autonomous continuation immediately.",
+      "expected_outcome": "No policy violation; task marked blocked for human intervention.",
+      "estimated_success_probability": 1
+    }
+  ],
+  "proposed_repair_action": {
+    "action": "request_manual_review",
+    "rationale": "This path requires explicit human approval under policy constraints.",
+    "requires_human_approval": true,
+    "target": "capability.filesystem.write"
+  },
+  "provenance": {
+    "run_id": "run-policy-001",
+    "source_stage": "policy_gate",
+    "trace_entry_id": "trace-policy-001",
+    "contract_versions": {
+      "semantic_ir": "0.1.0",
+      "policy_profile": "0.1.0",
+      "feedback_tensor": "1.0.0"
+    }
+  }
+}

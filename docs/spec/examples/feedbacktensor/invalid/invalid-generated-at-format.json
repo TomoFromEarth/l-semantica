@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0.0",
+  "feedback_id": "ft-invalid-004",
+  "generated_at": "2026-99-99T25:61:61+99:99",
+  "failure_signal": {
+    "class": "schema_contract",
+    "stage": "runtime",
+    "summary": "Generated timestamp uses out-of-range date/time/offset components.",
+    "continuation_allowed": false,
+    "error_code": "INVALID_TIMESTAMP"
+  },
+  "confidence": {
+    "score": 0.66,
+    "rationale": "Timestamp parsing failed during validation."
+  },
+  "alternatives": [
+    {
+      "id": "alt-regenerate",
+      "hypothesis": "Regenerate feedback with a normalized timestamp.",
+      "expected_outcome": "Schema validation succeeds."
+    }
+  ],
+  "proposed_repair_action": {
+    "action": "retry_with_patch",
+    "rationale": "Only the generated_at field requires normalization.",
+    "requires_human_approval": false,
+    "target": "generated_at"
+  },
+  "provenance": {
+    "run_id": "run-invalid-004",
+    "source_stage": "runtime",
+    "trace_entry_id": "trace-invalid-004",
+    "contract_versions": {
+      "semantic_ir": "0.1.0",
+      "policy_profile": "0.1.0",
+      "feedback_tensor": "1.0.0"
+    }
+  }
+}
