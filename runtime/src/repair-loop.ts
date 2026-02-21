@@ -185,6 +185,8 @@ function parseConfidenceTuple(
       threshold: number;
       confidenceLiteral: string;
       thresholdLiteral: string;
+      pairStart: number;
+      pairEnd: number;
     }
   | undefined {
   const tupleMatch = CONFIDENCE_THRESHOLD_PAIR_PATTERN.exec(excerpt);
@@ -208,12 +210,23 @@ function parseConfidenceTuple(
     confidence,
     threshold,
     confidenceLiteral,
-    thresholdLiteral
+    thresholdLiteral,
+    pairStart: tupleMatch.index,
+    pairEnd: tupleMatch.index + tupleMatch[0].length
   };
 }
 
-function replaceConfidenceInExcerpt(excerpt: string, confidenceLiteral: string): string {
-  return excerpt.replace(CONFIDENCE_PATTERN, `confidence=${confidenceLiteral}`);
+function replaceConfidenceInExcerpt(
+  excerpt: string,
+  tuple: {
+    pairStart: number;
+    pairEnd: number;
+  },
+  confidenceLiteral: string
+): string {
+  const tupleExcerpt = excerpt.slice(tuple.pairStart, tuple.pairEnd);
+  const repairedTupleExcerpt = tupleExcerpt.replace(CONFIDENCE_PATTERN, `confidence=${confidenceLiteral}`);
+  return `${excerpt.slice(0, tuple.pairStart)}${repairedTupleExcerpt}${excerpt.slice(tuple.pairEnd)}`;
 }
 
 const REPAIR_RULES: RepairRule[] = [
@@ -465,7 +478,7 @@ const REPAIR_RULES: RepairRule[] = [
         type: "repaired",
         reasonCode: "STOCHASTIC_CONFIDENCE_RECOVERED",
         detail: "Confidence repaired to threshold using constrained deterministic re-prompting.",
-        repairedExcerpt: replaceConfidenceInExcerpt(context.excerpt, tuple.thresholdLiteral)
+        repairedExcerpt: replaceConfidenceInExcerpt(context.excerpt, tuple, tuple.thresholdLiteral)
       };
     }
   },

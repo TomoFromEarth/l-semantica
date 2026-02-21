@@ -234,6 +234,24 @@ test("repair loop supports scientific-notation confidence tuples", () => {
   assert.equal(result.repairedExcerpt?.includes("confidence=2e-7"), true);
 });
 
+test("repair loop repairs the matched confidence tuple when prior confidence tokens exist", () => {
+  const result = runRepair(
+    {
+      failureClass: "stochastic_extraction_uncertainty",
+      stage: "extraction",
+      artifact: "model_output",
+      excerpt: "aux_confidence=0.99; confidence=0.10; threshold=0.80"
+    },
+    2
+  );
+
+  assert.equal(result.decision, "repaired");
+  assert.equal(result.reasonCode, "STOCHASTIC_CONFIDENCE_RECOVERED");
+  assert.equal(result.repairedExcerpt?.includes("aux_confidence=0.99"), true);
+  assert.equal(result.repairedExcerpt?.includes("aux_confidence=0.80"), false);
+  assert.equal(result.repairedExcerpt?.includes("confidence=0.80; threshold=0.80"), true);
+});
+
 test("repair loop binds confidence and threshold from the same tuple", () => {
   const result = runRepair(
     {
