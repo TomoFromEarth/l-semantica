@@ -11,7 +11,7 @@ FeedbackTensor v1 is the first machine-readable contract draft for runtime relia
 ## Contract Shape (v1)
 - `schema_version` (required): fixed to `1.0.0`.
 - `feedback_id` (required): non-empty identifier for the feedback event.
-- `generated_at` (required): RFC3339/ISO-8601 `date-time` timestamp string produced by runtime.
+- `generated_at` (required): timestamp string that matches the schema's RFC3339/ISO-8601-style pattern with bounded date/time/offset components.
 - `failure_signal` (required object):
   - `class` (required enum): `parse`, `schema_contract`, `policy_gate`, `capability_denied`, `deterministic_runtime`, or `stochastic_extraction_uncertainty`.
   - `stage` (required enum): `compile`, `runtime`, `policy`, `capability`, or `repair`.

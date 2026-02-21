@@ -44,11 +44,18 @@ const invalidExamples = [
   }
 ];
 
-const ajv = new Ajv2020({ allErrors: true });
-const validateFeedbackTensor = ajv.compile(feedbackTensorSchema);
+function createFeedbackTensorValidator(): {
+  ajv: Ajv2020;
+  validateFeedbackTensor: ReturnType<Ajv2020["compile"]>;
+} {
+  const ajv = new Ajv2020({ allErrors: true });
+  const validateFeedbackTensor = ajv.compile(feedbackTensorSchema);
+  return { ajv, validateFeedbackTensor };
+}
 
 for (const validExample of validExamples) {
   test(`FeedbackTensor v1 schema accepts valid example: ${validExample.name}`, () => {
+    const { ajv, validateFeedbackTensor } = createFeedbackTensorValidator();
     const valid = validateFeedbackTensor(validExample.value);
 
     assert.equal(valid, true, ajv.errorsText(validateFeedbackTensor.errors, { separator: "\n" }));
@@ -57,6 +64,7 @@ for (const validExample of validExamples) {
 
 for (const invalidExample of invalidExamples) {
   test(`FeedbackTensor v1 schema rejects invalid example: ${invalidExample.name}`, () => {
+    const { ajv, validateFeedbackTensor } = createFeedbackTensorValidator();
     const valid = validateFeedbackTensor(invalidExample.value);
     const errorText = ajv.errorsText(validateFeedbackTensor.errors, { separator: "\n" });
 

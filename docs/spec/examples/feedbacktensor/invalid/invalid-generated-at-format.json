@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0.0",
   "feedback_id": "ft-invalid-004",
-  "generated_at": "not-a-timestamp",
+  "generated_at": "2026-99-99T25:61:61+99:99",
   "failure_signal": {
     "class": "schema_contract",
     "stage": "runtime",
-    "summary": "Generated timestamp is not RFC3339/ISO-8601.",
+    "summary": "Generated timestamp uses out-of-range date/time/offset components.",
     "continuation_allowed": false,
     "error_code": "INVALID_TIMESTAMP"
   },
