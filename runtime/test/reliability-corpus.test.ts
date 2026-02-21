@@ -105,7 +105,7 @@ test("reliability fixture corpus loads with required failure-class coverage", as
   }
 });
 
-test("reliability fixture corpus validator rejects invalid failure class", async () => {
+test("reliability fixture corpus validator rejects failure-class classification mismatch", async () => {
   const repoRoot = getRepoRoot();
   const corpusPath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
   const fixtureModule = await loadReliabilityFixtureModule();
@@ -124,4 +124,49 @@ test("reliability fixture corpus validator rejects invalid failure class", async
     () => fixtureModule.validateReliabilityFixtureCorpus(corpus),
     /expected\.classification must match failure_class/
   );
+});
+
+test("reliability fixture corpus validator normalizes strings and enforces continuation invariant", async () => {
+  const repoRoot = getRepoRoot();
+  const corpusPath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
+  const fixtureModule = await loadReliabilityFixtureModule();
+  const corpus = readReliabilityCorpus(corpusPath);
+
+  const fixture = corpus.fixtures[0] as unknown as {
+    id: string;
+    failure_class: string;
+    recoverability: string;
+    expected: { classification: string; continuation_allowed: boolean };
+    input: { stage: string; artifact: string; excerpt: string };
+  };
+
+  corpus.schema_version = ` ${corpus.schema_version} `;
+  corpus.corpus_id = ` ${corpus.corpus_id} `;
+  corpus.description = ` ${corpus.description} `;
+  fixture.id = ` ${fixture.id} `;
+  fixture.failure_class = " parse ";
+  fixture.recoverability = " recoverable ";
+  fixture.expected.classification = " parse ";
+  fixture.expected.continuation_allowed = false;
+  fixture.input.stage = " compile ";
+  fixture.input.artifact = " ls_source ";
+  fixture.input.excerpt = ` ${fixture.input.excerpt} `;
+
+  assert.throws(
+    () => fixtureModule.validateReliabilityFixtureCorpus(corpus),
+    /recoverable fixtures must allow continuation/
+  );
+
+  fixture.expected.continuation_allowed = true;
+  fixtureModule.validateReliabilityFixtureCorpus(corpus);
+
+  assert.equal(corpus.schema_version, fixtureModule.RELIABILITY_CORPUS_SCHEMA_VERSION);
+  assert.equal(corpus.corpus_id, "m1-failure-classes-v0");
+  assert.equal(corpus.description, "Reliability fixtures for M1 failure-class coverage and continuation expectations.");
+  assert.equal(corpus.fixtures[0].id, "parse-missing-goal-quote-recoverable");
+  assert.equal(corpus.fixtures[0].failure_class, "parse");
+  assert.equal(corpus.fixtures[0].recoverability, "recoverable");
+  assert.equal(corpus.fixtures[0].expected.classification, "parse");
+  assert.equal(corpus.fixtures[0].input.stage, "compile");
+  assert.equal(corpus.fixtures[0].input.artifact, "ls_source");
 });

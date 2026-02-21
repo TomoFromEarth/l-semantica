@@ -63,6 +63,7 @@ function validateFixture(candidate, fixtureIndex, seenIds) {
   const fixturePath = `fixtures[${fixtureIndex}]`;
 
   const id = assertNonEmptyString(fixture.id, `${fixturePath}.id`);
+  fixture.id = id;
   if (seenIds.has(id)) {
     throw new Error(`Reliability corpus fixture id "${id}" must be unique`);
   }
@@ -74,9 +75,16 @@ function validateFixture(candidate, fixtureIndex, seenIds) {
     RELIABILITY_FAILURE_CLASSES,
     `${fixturePath}.failure_class`
   );
+  fixture.failure_class = failureClass;
 
-  assertNonEmptyString(fixture.scenario, `${fixturePath}.scenario`);
-  assertEnum(fixture.recoverability, RECOVERABILITY_VALUES, `${fixturePath}.recoverability`);
+  const scenario = assertNonEmptyString(fixture.scenario, `${fixturePath}.scenario`);
+  fixture.scenario = scenario;
+  const recoverability = assertEnum(
+    fixture.recoverability,
+    RECOVERABILITY_VALUES,
+    `${fixturePath}.recoverability`
+  );
+  fixture.recoverability = recoverability;
 
   const expected = assertObject(fixture.expected, `${fixturePath}.expected`);
   const expectedClassification = assertEnum(
@@ -84,7 +92,12 @@ function validateFixture(candidate, fixtureIndex, seenIds) {
     RELIABILITY_FAILURE_CLASSES,
     `${fixturePath}.expected.classification`
   );
-  assertBoolean(expected.continuation_allowed, `${fixturePath}.expected.continuation_allowed`);
+  expected.classification = expectedClassification;
+  const continuationAllowed = assertBoolean(
+    expected.continuation_allowed,
+    `${fixturePath}.expected.continuation_allowed`
+  );
+  expected.continuation_allowed = continuationAllowed;
 
   if (expectedClassification !== failureClass) {
     throw new Error(
@@ -92,24 +105,42 @@ function validateFixture(candidate, fixtureIndex, seenIds) {
     );
   }
 
+  if (recoverability === "recoverable" && continuationAllowed !== true) {
+    throw new Error(
+      `Reliability corpus fixture "${id}" recoverable fixtures must allow continuation`
+    );
+  }
+
+  if (recoverability === "non_recoverable" && continuationAllowed !== false) {
+    throw new Error(
+      `Reliability corpus fixture "${id}" non_recoverable fixtures must block continuation`
+    );
+  }
+
   const input = assertObject(fixture.input, `${fixturePath}.input`);
-  assertEnum(input.stage, INPUT_STAGES, `${fixturePath}.input.stage`);
-  assertEnum(input.artifact, INPUT_ARTIFACTS, `${fixturePath}.input.artifact`);
-  assertNonEmptyString(input.excerpt, `${fixturePath}.input.excerpt`);
+  const stage = assertEnum(input.stage, INPUT_STAGES, `${fixturePath}.input.stage`);
+  const artifact = assertEnum(input.artifact, INPUT_ARTIFACTS, `${fixturePath}.input.artifact`);
+  const excerpt = assertNonEmptyString(input.excerpt, `${fixturePath}.input.excerpt`);
+  input.stage = stage;
+  input.artifact = artifact;
+  input.excerpt = excerpt;
 }
 
 export function validateReliabilityFixtureCorpus(corpus) {
   const candidate = assertObject(corpus, "corpus");
 
   const schemaVersion = assertNonEmptyString(candidate.schema_version, "schema_version");
+  candidate.schema_version = schemaVersion;
   if (schemaVersion !== RELIABILITY_CORPUS_SCHEMA_VERSION) {
     throw new Error(
       `Reliability corpus schema_version "${schemaVersion}" is incompatible; expected "${RELIABILITY_CORPUS_SCHEMA_VERSION}"`
     );
   }
 
-  assertNonEmptyString(candidate.corpus_id, "corpus_id");
-  assertNonEmptyString(candidate.description, "description");
+  const corpusId = assertNonEmptyString(candidate.corpus_id, "corpus_id");
+  const description = assertNonEmptyString(candidate.description, "description");
+  candidate.corpus_id = corpusId;
+  candidate.description = description;
 
   if (!Array.isArray(candidate.fixtures) || candidate.fixtures.length === 0) {
     throw new Error("Reliability corpus fixtures must be a non-empty array");
