@@ -390,7 +390,9 @@ const REPAIR_RULES: RepairRule[] = [
         type: "repaired",
         reasonCode: "DETERMINISTIC_TIMEOUT_RECOVERED",
         detail: "Deterministic timeout recovered within bounded retries.",
-        repairedExcerpt: context.excerpt.replace("error=timeout", "error=none")
+        repairedExcerpt: context.excerpt
+          .replace("error=timeout", "error=none")
+          .replace("retryable=true", "retryable=false")
       };
     }
   },

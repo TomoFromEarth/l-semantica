@@ -59,6 +59,9 @@ test("repair loop enforces bounded retries for deterministic timeout failures", 
   assert.equal(result.continuationAllowed, true);
   assert.equal(result.reasonCode, "DETERMINISTIC_TIMEOUT_RECOVERED");
   assert.equal(result.attempts, 2);
+  assert.equal(result.repairedExcerpt?.includes("error=none"), true);
+  assert.equal(result.repairedExcerpt?.includes("retryable=false"), true);
+  assert.equal(result.repairedExcerpt?.includes("retryable=true"), false);
   assert.deepEqual(
     result.history.map((entry) => entry.outcome),
     ["retry", "repaired"]
