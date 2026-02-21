@@ -11,7 +11,7 @@ FeedbackTensor v1 is the first machine-readable contract draft for runtime relia
 ## Contract Shape (v1)
 - `schema_version` (required): fixed to `1.0.0`.
 - `feedback_id` (required): non-empty identifier for the feedback event.
-- `generated_at` (required): non-empty timestamp string produced by runtime.
+- `generated_at` (required): RFC3339/ISO-8601 `date-time` timestamp string produced by runtime.
 - `failure_signal` (required object):
   - `class` (required enum): `parse`, `schema_contract`, `policy_gate`, `capability_denied`, `deterministic_runtime`, or `stochastic_extraction_uncertainty`.
   - `stage` (required enum): `compile`, `runtime`, `policy`, `capability`, or `repair`.
@@ -36,8 +36,8 @@ FeedbackTensor v1 is the first machine-readable contract draft for runtime relia
 
 ## Compatibility and Versioning Notes
 - FeedbackTensor v1 uses semantic version `1.0.0` for the first stable major-family draft.
-- Consumers must hard-reject payloads with non-`1.x` major versions.
-- Additive minor fields are allowed when `additionalProperties` remains unchanged for existing objects.
+- Consumers using this schema draft must reject any payload where `schema_version` is not exactly `1.0.0`.
+- Additive changes should be introduced via a new published schema/doc revision (for example, a future `1.x` file) with explicit compatibility notes.
 - Any field removal, required-field addition, enum narrowing, or semantic reinterpretation requires a major version bump and migration notes.
 
 ## Runtime Validation Contract
@@ -54,3 +54,4 @@ FeedbackTensor v1 is the first machine-readable contract draft for runtime relia
   - `docs/spec/examples/feedbacktensor/invalid/missing-schema-version.json`
   - `docs/spec/examples/feedbacktensor/invalid/confidence-score-out-of-range.json`
   - `docs/spec/examples/feedbacktensor/invalid/proposed-repair-action-missing-rationale.json`
+  - `docs/spec/examples/feedbacktensor/invalid/invalid-generated-at-format.json`

@@ -36,6 +36,11 @@ const invalidExamples = [
       "../../docs/spec/examples/feedbacktensor/invalid/proposed-repair-action-missing-rationale.json"
     ),
     expectedErrorSnippet: "rationale"
+  },
+  {
+    name: "invalid-generated-at-format",
+    value: loadJson("../../docs/spec/examples/feedbacktensor/invalid/invalid-generated-at-format.json"),
+    expectedErrorSnippet: "generated_at"
   }
 ];
 
