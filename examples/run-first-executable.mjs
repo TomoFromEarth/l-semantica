@@ -46,7 +46,7 @@ function main() {
   console.log(
     JSON.stringify(
       {
-        ok: true,
+        ok: runtimeResult.ok,
         inputPath,
         runtimeInput,
         runtimeResult
