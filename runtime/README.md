@@ -17,6 +17,16 @@ Execution engine, policy enforcement, and replay support.
   - `issues`: field-level validation details (`instancePath`, `keyword`, `message`)
 - Setup failures (for example unreadable schema files or resolver initialization failures) may throw standard `Error`.
 
+## Continuation Gate
+- `runSemanticIr(ir, options)` returns `continuationDecision` when the gate allows continuation (`continue`).
+- If the gate decides `escalate` or `stop`, runtime throws `RuntimeContinuationGateError`; the blocked decision and reason code are available on the error instance.
+- Configure gate evaluation through `options.continuationGate`:
+  - `verificationContract` (required): applies `continuation` behavior and pass criteria thresholds.
+  - `policyProfile` (optional): required when `verificationContract.continuation.require_policy_profile` is `true`.
+  - `verificationStatus` (optional): check results plus warning count; missing/incomplete summaries block autonomous continuation.
+  - `feedbackTensor` (optional input, effectively required for pass): missing required fields listed by `required_feedback_tensor_fields` block autonomous continuation.
+- `evaluateContinuationGate(...)` is exported for deterministic, testable policy + verification gating without invoking runtime execution.
+
 ## Repair Loop
 - `runRuleFirstRepairLoop(input, options)` executes deterministic rule-first repair over known M1 failure classes.
 - Rule order is stable and exported as `RULE_FIRST_REPAIR_ORDER`.

@@ -19,6 +19,7 @@ Before `1.0.0`, any release (minor or patch) may include breaking changes.
 - Runtime rule-first repair loop with deterministic rule ordering, bounded retries, and explicit `repaired`/`escalate`/`stop` outcomes (`runtime/src/repair-loop.ts`, `runtime/test/repair-loop.test.ts`).
 - Reliability corpus assertions that map fixture expectations to repair-loop continuation outcomes (`runtime/test/reliability-corpus.test.ts`).
 - Runtime FeedbackTensor emission for failed runtime invocations and terminal repair outcomes with run-id linkage to trace records (`runtime/src/index.ts`, `runtime/src/repair-loop.ts`, `runtime/src/feedback-tensor.ts`, `runtime/test/feedbacktensor-emission.test.ts`).
+- Runtime policy + verification continuation gate with explicit reason-coded `continue`/`escalate`/`stop` decisions and blocking semantics on failing/incomplete verification evidence (`runtime/src/continuation-gate.ts`, `runtime/src/index.ts`, `runtime/test/continuation-gate.test.ts`).
 
 ## [0.1.0] - 2026-02-21
 ### Added

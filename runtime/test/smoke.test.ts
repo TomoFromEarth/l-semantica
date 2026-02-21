@@ -8,6 +8,8 @@ test("runSemanticIr returns trace id", () => {
 
   assert.equal(result.ok, true);
   assert.equal(result.traceId, "trace-0.1.0");
+  assert.equal(result.continuationDecision.decision, "continue");
+  assert.equal(result.continuationDecision.reasonCode, "CONTINUATION_GATE_NOT_CONFIGURED");
 });
 
 test("runSemanticIr validates required fields", () => {
