@@ -324,6 +324,8 @@ export function evaluateContinuationGate(input: EvaluateContinuationGateInput): 
     });
   }
 
+  // Pass-ratio thresholds are defined over "required" checks only; `require_all_policy_assertions`
+  // still enforces hard-fail behavior for every policy assertion via `failedPolicyAssertionIds`.
   const requiredChecksPassed = checkCoverage.passed + passedRequiredPolicyAssertions;
   const requiredChecksTotal = requiredChecks.length + requiredPolicyAssertions.length;
   const minimumRequiredChecksPassRatio =
