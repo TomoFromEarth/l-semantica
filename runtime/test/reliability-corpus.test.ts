@@ -170,3 +170,16 @@ test("reliability fixture corpus validator normalizes strings and enforces conti
   assert.equal(corpus.fixtures[0].input.stage, "compile");
   assert.equal(corpus.fixtures[0].input.artifact, "ls_source");
 });
+
+test("reliability fixture corpus loader trims corpusPath option", async () => {
+  const repoRoot = getRepoRoot();
+  const fixtureModule = await loadReliabilityFixtureModule();
+  const absolutePath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
+
+  const { corpusPath, corpus } = fixtureModule.loadReliabilityFixtureCorpus({
+    corpusPath: ` ${absolutePath} `
+  });
+
+  assert.equal(corpusPath, absolutePath);
+  assert.equal(corpus.schema_version, fixtureModule.RELIABILITY_CORPUS_SCHEMA_VERSION);
+});

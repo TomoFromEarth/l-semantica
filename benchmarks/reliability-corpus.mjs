@@ -158,7 +158,7 @@ function resolveCorpusPath(pathOrUndefined) {
     return resolve(scriptDirectory, "fixtures/reliability/failure-corpus.v0.json");
   }
 
-  return resolve(process.cwd(), pathOrUndefined);
+  return resolve(process.cwd(), pathOrUndefined.trim());
 }
 
 export function loadReliabilityFixtureCorpus(options = {}) {
