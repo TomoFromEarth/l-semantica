@@ -7,7 +7,8 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "bench:run": "node benchmarks/run-harness.mjs"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
