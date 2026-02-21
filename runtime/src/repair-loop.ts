@@ -90,7 +90,6 @@ interface RepairRule {
 const DEFAULT_MAX_ATTEMPTS = 2;
 const ABSOLUTE_MAX_ATTEMPTS = 10;
 const SCHEMA_VERSION_EXCERPT_PATTERN = /"schema_version"\s*:\s*"([^"]+)"/;
-const SEMVER_EXCERPT_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/;
 const CONFIDENCE_PATTERN = /confidence=([0-9]*\.?[0-9]+)/;
 const THRESHOLD_PATTERN = /threshold=([0-9]*\.?[0-9]+)/;
 
@@ -169,19 +168,6 @@ function replaceSchemaVersionInExcerpt(excerpt: string, version: string): string
   return excerpt.replace(SCHEMA_VERSION_EXCERPT_PATTERN, `"schema_version": "${version}"`);
 }
 
-function parseSemver(value: string): { major: number; minor: number; patch: number } | undefined {
-  const match = SEMVER_EXCERPT_PATTERN.exec(value);
-  if (!match) {
-    return undefined;
-  }
-
-  return {
-    major: Number.parseInt(match[1], 10),
-    minor: Number.parseInt(match[2], 10),
-    patch: Number.parseInt(match[3], 10)
-  };
-}
-
 function parseConfidenceTuple(excerpt: string): { confidence: number; threshold: number } | undefined {
   const confidenceMatch = CONFIDENCE_PATTERN.exec(excerpt);
   const thresholdMatch = THRESHOLD_PATTERN.exec(excerpt);
@@ -202,8 +188,7 @@ function parseConfidenceTuple(excerpt: string): { confidence: number; threshold:
 }
 
 function replaceConfidenceInExcerpt(excerpt: string, confidence: number): string {
-  const normalizedConfidence = Number.isInteger(confidence) ? confidence.toString() : confidence.toFixed(2);
-  return excerpt.replace(CONFIDENCE_PATTERN, `confidence=${normalizedConfidence}`);
+  return excerpt.replace(CONFIDENCE_PATTERN, `confidence=${confidence.toString()}`);
 }
 
 const REPAIR_RULES: RepairRule[] = [
@@ -296,13 +281,12 @@ const REPAIR_RULES: RepairRule[] = [
         return false;
       }
 
-      const parsedVersion = parseSemver(normalizedVersion);
-      return parsedVersion !== undefined && parsedVersion.major >= 1;
+      return true;
     },
     apply: () => ({
       type: "escalate",
       reasonCode: "SCHEMA_VERSION_INCOMPATIBLE",
-      detail: "Schema major version is incompatible with supported runtime contracts."
+      detail: "Schema version is incompatible with supported runtime contracts."
     })
   },
   {

@@ -114,18 +114,38 @@ test("repair loop returns terminal stop for non-recoverable policy denials", () 
   assert.equal(result.appliedRuleId, "policy_gate.terminal_deny_production_destructive_write");
 });
 
-test("repair loop escalates on incompatible contract schema major version", () => {
-  const result = runRepair({
-    failureClass: "schema_contract",
-    stage: "contract_load",
-    artifact: "semantic_ir",
-    excerpt: '"schema_version": "1.0.0"'
-  });
+test("repair loop escalates on incompatible contract schema versions", () => {
+  const excerpts = ['"schema_version": "1.0.0"', '"schema_version": "0.2.0"', '"schema_version": "1.0.0-beta"'];
 
-  assert.equal(result.decision, "escalate");
-  assert.equal(result.continuationAllowed, false);
-  assert.equal(result.reasonCode, "SCHEMA_VERSION_INCOMPATIBLE");
-  assert.equal(result.attempts, 1);
+  for (const excerpt of excerpts) {
+    const result = runRepair({
+      failureClass: "schema_contract",
+      stage: "contract_load",
+      artifact: "semantic_ir",
+      excerpt
+    });
+
+    assert.equal(result.decision, "escalate");
+    assert.equal(result.continuationAllowed, false);
+    assert.equal(result.reasonCode, "SCHEMA_VERSION_INCOMPATIBLE");
+    assert.equal(result.attempts, 1);
+  }
+});
+
+test("repair loop preserves threshold precision in stochastic confidence repair", () => {
+  const result = runRepair(
+    {
+      failureClass: "stochastic_extraction_uncertainty",
+      stage: "extraction",
+      artifact: "model_output",
+      excerpt: "confidence=0.52; threshold=0.805"
+    },
+    2
+  );
+
+  assert.equal(result.decision, "repaired");
+  assert.equal(result.reasonCode, "STOCHASTIC_CONFIDENCE_RECOVERED");
+  assert.equal(result.repairedExcerpt?.includes("confidence=0.805"), true);
 });
 
 test("repair loop stops after bounded retries for unresolved extraction ambiguity", () => {
