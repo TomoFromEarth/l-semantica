@@ -11,13 +11,15 @@ Contributions are welcome for language design, compiler/runtime implementation, 
 
 ## Branching
 - Default branch: `main`
-- Feature branches: `feat/<short-name>` or `fix/<short-name>`
+- Feature branches: `gh-<issue-number>/<short-kebab-summary>`
+- Keep branches issue-linked and narrowly scoped to one primary issue.
 
 ## Pull Request Expectations
 - Clear problem statement and scope
 - Tests added/updated
 - Backward-compatibility notes (if applicable)
 - Risks and tradeoffs documented
+- Apply existing repository labels only (do not create ad hoc labels from a PR flow)
 
 ## Changelog Standard
 - Track notable changes in `CHANGELOG.md` at repository root.
