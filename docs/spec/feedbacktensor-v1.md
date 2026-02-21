@@ -34,6 +34,16 @@ FeedbackTensor v1 is the first machine-readable contract draft for runtime relia
   - `trace_entry_id` (optional): trace ledger linkage identifier.
   - `contract_versions` (required object): non-empty `semantic_ir`, `policy_profile`, and `feedback_tensor` version fields.
 
+## Confidence Semantics (Current Runtime Mapping)
+- Runtime failures classified as `schema_contract`: `confidence.score=0.9`, `calibration_band=high`.
+  - Meaning: high confidence in deterministic contract/input validation failure signal.
+- Runtime failures classified as non-`schema_contract` (for example deterministic invocation/gate failures): `confidence.score=0.7`, `calibration_band=medium`.
+  - Meaning: medium confidence in deterministic runtime-local failure classification.
+- Repair-loop terminal outcomes:
+  - `repaired`: `confidence.score=0.9`, `calibration_band=high` (deterministic recovery succeeded safely).
+  - `escalate`: `confidence.score=0.45`, `calibration_band=medium` (deterministic in-scope repair was insufficient).
+  - `stop`: `confidence.score=0.2`, `calibration_band=low` (explicit terminal stop with continuation blocked).
+
 ## Compatibility and Versioning Notes
 - FeedbackTensor v1 uses semantic version `1.0.0` for the first stable major-family draft.
 - Consumers using this schema draft must reject any payload where `schema_version` is not exactly `1.0.0`.

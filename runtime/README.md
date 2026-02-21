@@ -38,6 +38,15 @@ Execution engine, policy enforcement, and replay support.
   - `escalate`: no safe deterministic repair path exists and human escalation is required.
   - `stop`: bounded retries exhausted or hard-stop policy/runtime invariants were hit.
 
+## FeedbackTensor Confidence Semantics
+- Runtime failure emission:
+  - `schema_contract` failures emit `confidence.score=0.9` and `calibration_band=high`.
+  - Non-schema runtime failures emit `confidence.score=0.7` and `calibration_band=medium`.
+- Repair-loop terminal emission:
+  - `repaired` emits `confidence.score=0.9` and `calibration_band=high`.
+  - `escalate` emits `confidence.score=0.45` and `calibration_band=medium`.
+  - `stop` emits `confidence.score=0.2` and `calibration_band=low`.
+
 ## Trace Ledger
 - `runSemanticIr(ir, options)` emits one trace ledger entry per invocation.
 - Set `options.traceLedgerPath` to append JSON-lines records to a file.

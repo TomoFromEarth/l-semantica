@@ -22,6 +22,7 @@ const INPUT_ARTIFACTS = [
   "runtime_event",
   "model_output"
 ];
+const CONFIDENCE_CALIBRATION_BANDS = ["low", "medium", "high"];
 
 function assertObject(value, path) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -53,6 +54,20 @@ function assertEnum(value, values, path) {
 function assertBoolean(value, path) {
   if (typeof value !== "boolean") {
     throw new Error(`Reliability corpus field ${path} must be a boolean`);
+  }
+
+  return value;
+}
+
+function assertUnitIntervalNumber(value, path, fixtureId) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`Reliability corpus fixture "${fixtureId}" field ${path} must be a finite number`);
+  }
+
+  if (value < 0 || value > 1) {
+    throw new Error(
+      `Reliability corpus fixture "${fixtureId}" field ${path} must be within [0, 1]; received ${value}`
+    );
   }
 
   return value;
@@ -98,6 +113,50 @@ function validateFixture(candidate, fixtureIndex, seenIds) {
     `${fixturePath}.expected.continuation_allowed`
   );
   expected.continuation_allowed = continuationAllowed;
+  if (expected.expected_confidence !== undefined) {
+    const confidencePath = `${fixturePath}.expected.expected_confidence`;
+    if (
+      typeof expected.expected_confidence !== "object" ||
+      expected.expected_confidence === null ||
+      Array.isArray(expected.expected_confidence)
+    ) {
+      throw new Error(`Reliability corpus fixture "${id}" field ${confidencePath} must be an object`);
+    }
+
+    const expectedConfidence = expected.expected_confidence;
+    const scoreMin = assertUnitIntervalNumber(
+      expectedConfidence.score_min,
+      `${confidencePath}.score_min`,
+      id
+    );
+    const scoreMax = assertUnitIntervalNumber(
+      expectedConfidence.score_max,
+      `${confidencePath}.score_max`,
+      id
+    );
+    if (scoreMin > scoreMax) {
+      throw new Error(
+        `Reliability corpus fixture "${id}" field ${confidencePath}.score_min must be less than or equal to ${confidencePath}.score_max`
+      );
+    }
+
+    const calibrationBand = assertNonEmptyString(
+      expectedConfidence.calibration_band,
+      `${confidencePath}.calibration_band`
+    );
+    if (!CONFIDENCE_CALIBRATION_BANDS.includes(calibrationBand)) {
+      throw new Error(
+        `Reliability corpus fixture "${id}" field ${confidencePath}.calibration_band must be one of: ${CONFIDENCE_CALIBRATION_BANDS.join(
+          ", "
+        )}; received "${calibrationBand}"`
+      );
+    }
+    expected.expected_confidence = {
+      score_min: scoreMin,
+      score_max: scoreMax,
+      calibration_band: calibrationBand
+    };
+  }
 
   if (expectedClassification !== failureClass) {
     throw new Error(
