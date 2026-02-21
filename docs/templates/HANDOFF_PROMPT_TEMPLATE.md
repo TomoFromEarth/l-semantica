@@ -7,6 +7,28 @@ Use this template at the end of a working thread to hand context to the next thr
 ```md
 You are continuing work on L-Semantica.
 
+## Required Context Reads (Do Before Any Code/PR Actions)
+- Core governance/workflow docs:
+  - `CONTRIBUTING.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `GOVERNANCE.md`
+- Domain docs relevant to the task (at minimum one):
+  - `compiler/README.md`
+  - `runtime/README.md`
+  - `examples/README.md`
+  - `benchmarks/README.md`
+  - `rfcs/README.md`
+  - `docs/README.md`
+- Confirm current issue + linked RFCs/PRs before implementation.
+
+## Thread Startup Protocol (Mandatory)
+1. Confirm required docs were read and list them in the first reply.
+2. State branch name and how it follows repo convention.
+3. Restate issue scope + out-of-scope in 3 bullets max.
+4. State validation commands that will be run before commit.
+5. State PR hygiene plan (issue link + labels from existing set only).
+
 ## Session Metadata
 - Date (UTC): <YYYY-MM-DD>
 - Handoff author: <name>
@@ -87,13 +109,14 @@ You are continuing work on L-Semantica.
   - <review threads to resolve, labels, milestone>
 
 ## Next Thread Start Checklist
-1. `git switch <branch>`
-2. `git pull --ff-only origin <branch>`
-3. Run validation baseline:
+1. Read required context docs listed above.
+2. `git switch <branch>`
+3. `git pull --ff-only origin <branch>`
+4. Run validation baseline:
    - `pnpm lint`
    - `pnpm typecheck`
    - `pnpm test`
-4. Execute next task:
+5. Execute next task:
    - <task>
 
 ## Expected First Deliverable In Next Thread
@@ -102,6 +125,7 @@ You are continuing work on L-Semantica.
 ## Hard Constraints To Preserve
 - Keep branch naming: `gh-<issue-number>/<short-kebab-summary>`.
 - Keep PRs small and issue-linked.
+- Use only existing repo labels on PRs/issues (do not create labels ad hoc).
 - Run lint/typecheck/tests before commit.
 - Do not expand scope without updating issue + PR notes.
 ```
@@ -127,3 +151,4 @@ First command: <command>
 2. Paste the full handoff prompt into the next thread's first message.
 3. Include absolute outcomes, not vague summaries.
 4. If scope changes, update issue and PR text in the same session.
+5. If workflow conventions changed, update `CONTRIBUTING.md` in the same PR to avoid cross-doc drift.
