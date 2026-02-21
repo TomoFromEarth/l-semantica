@@ -17,6 +17,15 @@ Execution engine, policy enforcement, and replay support.
   - `issues`: field-level validation details (`instancePath`, `keyword`, `message`)
 - Setup failures (for example unreadable schema files or resolver initialization failures) may throw standard `Error`.
 
+## Repair Loop
+- `runRuleFirstRepairLoop(input, options)` executes deterministic rule-first repair over known M1 failure classes.
+- Rule order is stable and exported as `RULE_FIRST_REPAIR_ORDER`.
+- Retry behavior is bounded by `options.maxAttempts` (default `2`, hard cap `10`).
+- Terminal outcomes are explicit and reason-coded:
+  - `repaired`: deterministic recovery succeeded and `continuationAllowed` is `true`.
+  - `escalate`: no safe deterministic repair path exists and human escalation is required.
+  - `stop`: bounded retries exhausted or hard-stop policy/runtime invariants were hit.
+
 ## Trace Ledger
 - `runSemanticIr(ir, options)` emits one trace ledger entry per invocation.
 - Set `options.traceLedgerPath` to append JSON-lines records to a file.

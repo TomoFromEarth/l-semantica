@@ -1,0 +1,643 @@
+export const REPAIR_FAILURE_CLASSES = [
+  "parse",
+  "schema_contract",
+  "policy_gate",
+  "capability_denied",
+  "deterministic_runtime",
+  "stochastic_extraction_uncertainty"
+] as const;
+
+export const REPAIR_STAGES = [
+  "compile",
+  "contract_load",
+  "policy_gate",
+  "runtime",
+  "extraction"
+] as const;
+
+export const REPAIR_ARTIFACTS = [
+  "ls_source",
+  "semantic_ir",
+  "policy_profile",
+  "capability_manifest",
+  "runtime_event",
+  "model_output"
+] as const;
+
+export type RepairFailureClass = (typeof REPAIR_FAILURE_CLASSES)[number];
+export type RepairStage = (typeof REPAIR_STAGES)[number];
+export type RepairArtifact = (typeof REPAIR_ARTIFACTS)[number];
+export type RepairDecision = "repaired" | "escalate" | "stop";
+export type RepairAttemptOutcome = "repaired" | "retry" | "escalate" | "stop";
+
+export interface RepairLoopInput {
+  failureClass: RepairFailureClass;
+  stage: RepairStage;
+  artifact: RepairArtifact;
+  excerpt: string;
+}
+
+export interface RunRepairLoopOptions {
+  maxAttempts?: number;
+}
+
+export interface RepairAttemptRecord {
+  attempt: number;
+  ruleId: string;
+  outcome: RepairAttemptOutcome;
+  reasonCode: string;
+  detail: string;
+}
+
+export interface RepairLoopResult {
+  classification: RepairFailureClass;
+  decision: RepairDecision;
+  continuationAllowed: boolean;
+  reasonCode: string;
+  detail: string;
+  attempts: number;
+  maxAttempts: number;
+  appliedRuleId?: string;
+  repairedExcerpt?: string;
+  history: RepairAttemptRecord[];
+}
+
+interface NormalizedRepairLoopInput extends RepairLoopInput {
+  excerpt: string;
+}
+
+interface RuleMatchContext {
+  input: NormalizedRepairLoopInput;
+  excerpt: string;
+  attempt: number;
+}
+
+interface RuleOutcome {
+  type: RepairAttemptOutcome;
+  reasonCode: string;
+  detail: string;
+  repairedExcerpt?: string;
+  nextExcerpt?: string;
+}
+
+interface RepairRule {
+  id: string;
+  failureClass: RepairFailureClass;
+  matches: (context: RuleMatchContext) => boolean;
+  apply: (context: RuleMatchContext) => RuleOutcome;
+}
+
+const DEFAULT_MAX_ATTEMPTS = 2;
+const ABSOLUTE_MAX_ATTEMPTS = 10;
+const SCHEMA_VERSION_EXCERPT_PATTERN = /"schema_version"\s*:\s*"([^"]*)"/;
+const NUMERIC_LITERAL_PATTERN = "([+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)";
+const CONFIDENCE_PATTERN = new RegExp(`confidence=${NUMERIC_LITERAL_PATTERN}`);
+const CONFIDENCE_THRESHOLD_PAIR_PATTERN = new RegExp(
+  `confidence=${NUMERIC_LITERAL_PATTERN}\\s*;\\s*threshold=${NUMERIC_LITERAL_PATTERN}|threshold=${NUMERIC_LITERAL_PATTERN}\\s*;\\s*confidence=${NUMERIC_LITERAL_PATTERN}`
+);
+const FALLBACK_PLAN_PATTERN = /fallback_plan=([a-z0-9_]+)(?=;|\s|$)/i;
+
+const EXPECTED_SCHEMA_VERSION_BY_ARTIFACT: Partial<Record<RepairArtifact, string>> = {
+  semantic_ir: "0.1.0",
+  policy_profile: "0.1.0"
+};
+
+function requireRecord(value: unknown, path: string): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${path} must be an object`);
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function requireNonEmptyString(
+  value: unknown,
+  path: string,
+  options: { preserveWhitespace?: boolean } = {}
+): string {
+  if (typeof value !== "string") {
+    throw new Error(`${path} must be a non-empty string`);
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new Error(`${path} must be a non-empty string`);
+  }
+
+  return options.preserveWhitespace ? value : trimmed;
+}
+
+function requireEnumValue<T extends readonly string[]>(
+  value: unknown,
+  values: T,
+  path: string
+): T[number] {
+  const normalized = requireNonEmptyString(value, path);
+  if (!values.includes(normalized)) {
+    throw new Error(`${path} must be one of: ${values.join(", ")}; received "${normalized}"`);
+  }
+
+  return normalized as T[number];
+}
+
+function normalizeRepairLoopInput(input: unknown): NormalizedRepairLoopInput {
+  const candidate = requireRecord(input, "repair loop input");
+
+  return {
+    failureClass: requireEnumValue(candidate.failureClass, REPAIR_FAILURE_CLASSES, "failureClass"),
+    stage: requireEnumValue(candidate.stage, REPAIR_STAGES, "stage"),
+    artifact: requireEnumValue(candidate.artifact, REPAIR_ARTIFACTS, "artifact"),
+    excerpt: requireNonEmptyString(candidate.excerpt, "excerpt", { preserveWhitespace: true })
+  };
+}
+
+function normalizeMaxAttempts(value: unknown): number {
+  if (value === undefined) {
+    return DEFAULT_MAX_ATTEMPTS;
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new Error("maxAttempts must be an integer greater than or equal to 1");
+  }
+
+  if (value > ABSOLUTE_MAX_ATTEMPTS) {
+    throw new Error(`maxAttempts must be less than or equal to ${ABSOLUTE_MAX_ATTEMPTS}`);
+  }
+
+  return value;
+}
+
+function getSchemaVersionFromExcerpt(excerpt: string): string | undefined {
+  const match = SCHEMA_VERSION_EXCERPT_PATTERN.exec(excerpt);
+  return match?.[1];
+}
+
+function replaceSchemaVersionInExcerpt(excerpt: string, version: string): string {
+  return excerpt.replace(SCHEMA_VERSION_EXCERPT_PATTERN, `"schema_version": "${version}"`);
+}
+
+function parseConfidenceTuple(
+  excerpt: string
+):
+  | {
+      confidence: number;
+      threshold: number;
+      confidenceLiteral: string;
+      thresholdLiteral: string;
+      pairStart: number;
+      pairEnd: number;
+    }
+  | undefined {
+  const tupleMatch = CONFIDENCE_THRESHOLD_PAIR_PATTERN.exec(excerpt);
+  if (!tupleMatch) {
+    return undefined;
+  }
+
+  const confidenceLiteral = tupleMatch[1] ?? tupleMatch[4];
+  const thresholdLiteral = tupleMatch[2] ?? tupleMatch[3];
+  if (confidenceLiteral === undefined || thresholdLiteral === undefined) {
+    return undefined;
+  }
+
+  const confidence = Number.parseFloat(confidenceLiteral);
+  const threshold = Number.parseFloat(thresholdLiteral);
+  if (!Number.isFinite(confidence) || !Number.isFinite(threshold)) {
+    return undefined;
+  }
+
+  return {
+    confidence,
+    threshold,
+    confidenceLiteral,
+    thresholdLiteral,
+    pairStart: tupleMatch.index,
+    pairEnd: tupleMatch.index + tupleMatch[0].length
+  };
+}
+
+function replaceConfidenceInExcerpt(
+  excerpt: string,
+  tuple: {
+    pairStart: number;
+    pairEnd: number;
+  },
+  confidenceLiteral: string
+): string {
+  const tupleExcerpt = excerpt.slice(tuple.pairStart, tuple.pairEnd);
+  const repairedTupleExcerpt = tupleExcerpt.replace(CONFIDENCE_PATTERN, `confidence=${confidenceLiteral}`);
+  return `${excerpt.slice(0, tuple.pairStart)}${repairedTupleExcerpt}${excerpt.slice(tuple.pairEnd)}`;
+}
+
+const REPAIR_RULES: RepairRule[] = [
+  {
+    id: "parse.append_missing_goal_quote",
+    failureClass: "parse",
+    matches: (context) =>
+      context.input.stage === "compile" &&
+      context.input.artifact === "ls_source" &&
+      context.excerpt.startsWith('goal "') &&
+      !context.excerpt.endsWith('"') &&
+      context.excerpt.length > 'goal "'.length,
+    apply: (context) => ({
+      type: "repaired",
+      reasonCode: "PARSE_APPEND_MISSING_QUOTE",
+      detail: "Appended missing closing quote in goal declaration.",
+      repairedExcerpt: `${context.excerpt}"`
+    })
+  },
+  {
+    id: "parse.truncated_context",
+    failureClass: "parse",
+    matches: (context) =>
+      context.input.stage === "compile" &&
+      context.input.artifact === "ls_source" &&
+      context.excerpt === 'goal "',
+    apply: () => ({
+      type: "escalate",
+      reasonCode: "PARSE_TRUNCATED_CONTEXT",
+      detail: "Source is truncated and cannot be deterministically repaired."
+    })
+  },
+  {
+    id: "schema_contract.normalize_schema_version_whitespace",
+    failureClass: "schema_contract",
+    matches: (context) => {
+      if (context.input.stage !== "contract_load") {
+        return false;
+      }
+      if (context.input.artifact !== "semantic_ir" && context.input.artifact !== "policy_profile") {
+        return false;
+      }
+
+      const extractedVersion = getSchemaVersionFromExcerpt(context.excerpt);
+      if (extractedVersion === undefined) {
+        return false;
+      }
+
+      const normalizedVersion = extractedVersion.trim();
+      if (normalizedVersion === extractedVersion) {
+        return false;
+      }
+
+      return normalizedVersion === EXPECTED_SCHEMA_VERSION_BY_ARTIFACT[context.input.artifact];
+    },
+    apply: (context) => {
+      const extractedVersion = getSchemaVersionFromExcerpt(context.excerpt);
+      const normalizedVersion = extractedVersion?.trim() ?? "";
+      return {
+        type: "repaired",
+        reasonCode: "SCHEMA_VERSION_WHITESPACE_NORMALIZED",
+        detail: "Normalized schema_version whitespace to expected canonical version.",
+        repairedExcerpt: replaceSchemaVersionInExcerpt(context.excerpt, normalizedVersion)
+      };
+    }
+  },
+  {
+    id: "schema_contract.reject_incompatible_schema_version",
+    failureClass: "schema_contract",
+    matches: (context) => {
+      if (context.input.stage !== "contract_load") {
+        return false;
+      }
+      if (context.input.artifact !== "semantic_ir" && context.input.artifact !== "policy_profile") {
+        return false;
+      }
+
+      const extractedVersion = getSchemaVersionFromExcerpt(context.excerpt);
+      if (extractedVersion === undefined) {
+        return false;
+      }
+
+      const normalizedVersion = extractedVersion.trim();
+      const expectedVersion = EXPECTED_SCHEMA_VERSION_BY_ARTIFACT[context.input.artifact];
+      if (expectedVersion === undefined) {
+        return false;
+      }
+
+      if (normalizedVersion === expectedVersion) {
+        return false;
+      }
+
+      return true;
+    },
+    apply: () => ({
+      type: "escalate",
+      reasonCode: "SCHEMA_VERSION_INCOMPATIBLE",
+      detail: "Schema version is incompatible with supported runtime contracts."
+    })
+  },
+  {
+    id: "policy_gate.apply_budget_fallback_plan",
+    failureClass: "policy_gate",
+    matches: (context) =>
+      context.input.stage === "policy_gate" &&
+      context.input.artifact === "policy_profile" &&
+      context.excerpt.includes("max_tokens exceeded") &&
+      context.excerpt.includes("fallback_plan="),
+    apply: (context) => {
+      const fallbackMatch = FALLBACK_PLAN_PATTERN.exec(context.excerpt);
+      if (!fallbackMatch) {
+        return {
+          type: "escalate",
+          reasonCode: "POLICY_FALLBACK_PLAN_UNPARSEABLE",
+          detail: "Policy fallback plan could not be deterministically identified."
+        };
+      }
+
+      const fallbackPlan = fallbackMatch[1];
+      return {
+        type: "repaired",
+        reasonCode: "POLICY_FALLBACK_PLAN_APPLIED",
+        detail: `Applied deterministic policy fallback "${fallbackPlan}".`,
+        repairedExcerpt: `${context.excerpt}; selected_fallback=${fallbackPlan}`
+      };
+    }
+  },
+  {
+    id: "policy_gate.terminal_deny_production_destructive_write",
+    failureClass: "policy_gate",
+    matches: (context) =>
+      context.input.stage === "policy_gate" &&
+      context.input.artifact === "policy_profile" &&
+      context.excerpt.includes("action=delete_resource") &&
+      context.excerpt.includes("environment=production") &&
+      context.excerpt.includes("rule=deny"),
+    apply: () => ({
+      type: "stop",
+      reasonCode: "POLICY_DENY_TERMINAL",
+      detail: "Production policy denies destructive action with no safe autonomous continuation."
+    })
+  },
+  {
+    id: "capability_denied.downgrade_to_readonly_flow",
+    failureClass: "capability_denied",
+    matches: (context) =>
+      context.input.stage === "runtime" &&
+      context.input.artifact === "capability_manifest" &&
+      context.excerpt.includes("requested=filesystem.write") &&
+      context.excerpt.includes("available=filesystem.read"),
+    apply: (context) => ({
+      type: "repaired",
+      reasonCode: "CAPABILITY_DOWNGRADED_TO_READONLY",
+      detail: "Switched from write operation to read-only inspection fallback.",
+      repairedExcerpt: context.excerpt.replace(
+        "requested=filesystem.write",
+        "requested=filesystem.read"
+      )
+    })
+  },
+  {
+    id: "capability_denied.required_network_capability_missing",
+    failureClass: "capability_denied",
+    matches: (context) =>
+      context.input.stage === "runtime" &&
+      context.input.artifact === "capability_manifest" &&
+      context.excerpt.includes("requested=network.http") &&
+      context.excerpt.includes("available=[]"),
+    apply: () => ({
+      type: "escalate",
+      reasonCode: "CAPABILITY_NETWORK_REQUIRED",
+      detail: "Required network capability is unavailable and no deterministic offline fallback exists."
+    })
+  },
+  {
+    id: "deterministic_runtime.retry_timeout_then_recover",
+    failureClass: "deterministic_runtime",
+    matches: (context) =>
+      context.input.stage === "runtime" &&
+      context.input.artifact === "runtime_event" &&
+      context.excerpt.includes("error=timeout") &&
+      context.excerpt.includes("retryable=true"),
+    apply: (context) => {
+      if (context.attempt < 2) {
+        return {
+          type: "retry",
+          reasonCode: "DETERMINISTIC_TIMEOUT_RETRY",
+          detail: "Retryable deterministic timeout encountered; retrying with bounded attempt budget."
+        };
+      }
+
+      return {
+        type: "repaired",
+        reasonCode: "DETERMINISTIC_TIMEOUT_RECOVERED",
+        detail: "Deterministic timeout recovered within bounded retries.",
+        repairedExcerpt: context.excerpt
+          .replace("error=timeout", "error=none")
+          .replace("retryable=true", "retryable=false")
+      };
+    }
+  },
+  {
+    id: "deterministic_runtime.terminal_invariant_violation",
+    failureClass: "deterministic_runtime",
+    matches: (context) =>
+      context.input.stage === "runtime" &&
+      context.input.artifact === "runtime_event" &&
+      context.excerpt.includes("node_output missing for required dependency"),
+    apply: () => ({
+      type: "stop",
+      reasonCode: "DETERMINISTIC_INVARIANT_VIOLATION",
+      detail: "Deterministic runtime invariant is violated; state cannot be safely continued."
+    })
+  },
+  {
+    id: "stochastic_extraction_uncertainty.reprompt_to_raise_confidence",
+    failureClass: "stochastic_extraction_uncertainty",
+    matches: (context) => {
+      if (context.input.stage !== "extraction" || context.input.artifact !== "model_output") {
+        return false;
+      }
+
+      const tuple = parseConfidenceTuple(context.excerpt);
+      if (tuple === undefined) {
+        return false;
+      }
+
+      return tuple.confidence < tuple.threshold;
+    },
+    apply: (context) => {
+      const tuple = parseConfidenceTuple(context.excerpt);
+      if (tuple === undefined) {
+        return {
+          type: "escalate",
+          reasonCode: "STOCHASTIC_CONFIDENCE_TUPLE_MISSING",
+          detail: "Confidence and threshold tuple could not be parsed for deterministic repair."
+        };
+      }
+
+      if (context.attempt < 2) {
+        return {
+          type: "retry",
+          reasonCode: "STOCHASTIC_REPROMPT_REQUIRED",
+          detail: "Confidence below threshold; issuing constrained deterministic re-prompt."
+        };
+      }
+
+      return {
+        type: "repaired",
+        reasonCode: "STOCHASTIC_CONFIDENCE_RECOVERED",
+        detail: "Confidence repaired to threshold using constrained deterministic re-prompting.",
+        repairedExcerpt: replaceConfidenceInExcerpt(context.excerpt, tuple, tuple.thresholdLiteral)
+      };
+    }
+  },
+  {
+    id: "stochastic_extraction_uncertainty.ambiguous_entity_unresolved",
+    failureClass: "stochastic_extraction_uncertainty",
+    matches: (context) =>
+      context.input.stage === "extraction" &&
+      context.input.artifact === "model_output" &&
+      context.excerpt.includes("top_candidates overlap") &&
+      context.excerpt.includes("confidence delta < 0.02"),
+    apply: () => ({
+      type: "retry",
+      reasonCode: "STOCHASTIC_AMBIGUITY_RETRY",
+      detail: "Entity ambiguity remains unresolved after constrained deterministic retry."
+    })
+  }
+];
+
+export const RULE_FIRST_REPAIR_ORDER = REPAIR_RULES.map((rule) => rule.id);
+
+function createTerminalResult(params: {
+  input: NormalizedRepairLoopInput;
+  maxAttempts: number;
+  decision: RepairDecision;
+  reasonCode: string;
+  detail: string;
+  attempts: number;
+  history: RepairAttemptRecord[];
+  appliedRuleId?: string;
+  repairedExcerpt?: string;
+}): RepairLoopResult {
+  return {
+    classification: params.input.failureClass,
+    decision: params.decision,
+    continuationAllowed: params.decision === "repaired",
+    reasonCode: params.reasonCode,
+    detail: params.detail,
+    attempts: params.attempts,
+    maxAttempts: params.maxAttempts,
+    history: params.history,
+    appliedRuleId: params.appliedRuleId,
+    repairedExcerpt: params.repairedExcerpt
+  };
+}
+
+export function runRuleFirstRepairLoop(
+  input: RepairLoopInput,
+  options: RunRepairLoopOptions = {}
+): RepairLoopResult {
+  const normalizedInput = normalizeRepairLoopInput(input);
+  const maxAttempts = normalizeMaxAttempts(options.maxAttempts);
+  const orderedRules = REPAIR_RULES.filter((rule) => rule.failureClass === normalizedInput.failureClass);
+  const history: RepairAttemptRecord[] = [];
+
+  if (orderedRules.length === 0) {
+    return createTerminalResult({
+      input: normalizedInput,
+      maxAttempts,
+      decision: "escalate",
+      reasonCode: "NO_RULES_REGISTERED",
+      detail: `No deterministic repair rules are registered for failure class "${normalizedInput.failureClass}".`,
+      attempts: 0,
+      history
+    });
+  }
+
+  let excerpt = normalizedInput.excerpt;
+
+  attemptLoop: for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let matchedRule = false;
+
+    for (const rule of orderedRules) {
+      const context: RuleMatchContext = {
+        input: normalizedInput,
+        excerpt,
+        attempt
+      };
+
+      if (!rule.matches(context)) {
+        continue;
+      }
+
+      matchedRule = true;
+      const outcome = rule.apply(context);
+      history.push({
+        attempt,
+        ruleId: rule.id,
+        outcome: outcome.type,
+        reasonCode: outcome.reasonCode,
+        detail: outcome.detail
+      });
+
+      if (outcome.type === "retry") {
+        if (outcome.nextExcerpt !== undefined) {
+          excerpt = outcome.nextExcerpt;
+        }
+
+        if (attempt === maxAttempts) {
+          return createTerminalResult({
+            input: normalizedInput,
+            maxAttempts,
+            decision: "stop",
+            reasonCode: "MAX_ATTEMPTS_EXCEEDED",
+            detail: `Maximum retry attempts reached (${maxAttempts}) after ${outcome.reasonCode}.`,
+            attempts: attempt,
+            history,
+            appliedRuleId: rule.id
+          });
+        }
+
+        continue attemptLoop;
+      }
+
+      if (outcome.type === "repaired") {
+        return createTerminalResult({
+          input: normalizedInput,
+          maxAttempts,
+          decision: "repaired",
+          reasonCode: outcome.reasonCode,
+          detail: outcome.detail,
+          attempts: attempt,
+          history,
+          appliedRuleId: rule.id,
+          repairedExcerpt: outcome.repairedExcerpt ?? excerpt
+        });
+      }
+
+      return createTerminalResult({
+        input: normalizedInput,
+        maxAttempts,
+        decision: outcome.type,
+        reasonCode: outcome.reasonCode,
+        detail: outcome.detail,
+        attempts: attempt,
+        history,
+        appliedRuleId: rule.id
+      });
+    }
+
+    if (!matchedRule) {
+      return createTerminalResult({
+        input: normalizedInput,
+        maxAttempts,
+        decision: "escalate",
+        reasonCode: "NO_SAFE_DETERMINISTIC_REPAIR",
+        detail: "No deterministic repair rule matched this failure payload safely.",
+        attempts: attempt,
+        history
+      });
+    }
+  }
+
+  return createTerminalResult({
+    input: normalizedInput,
+    maxAttempts,
+    decision: "stop",
+    reasonCode: "MAX_ATTEMPTS_EXCEEDED",
+    detail: `Maximum retry attempts reached (${maxAttempts}).`,
+    attempts: maxAttempts,
+    history
+  });
+}

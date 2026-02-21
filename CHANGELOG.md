@@ -16,6 +16,8 @@ Before `1.0.0`, any release (minor or patch) may include breaking changes.
 - VerificationContract v1 contract draft schema and spec documentation (`docs/spec/schemas/verificationcontract-v1.schema.json`, `docs/spec/verificationcontract-v1.md`).
 - VerificationContract valid/invalid fixture corpus and runtime schema validation tests (`docs/spec/examples/verificationcontract/`, `runtime/test/verificationcontract-schema.test.ts`).
 - Runtime contract loader support for VerificationContract v1 validation and compatibility checks (`runtime/src/contracts.ts`, `runtime/test/contract-loader.test.ts`).
+- Runtime rule-first repair loop with deterministic rule ordering, bounded retries, and explicit `repaired`/`escalate`/`stop` outcomes (`runtime/src/repair-loop.ts`, `runtime/test/repair-loop.test.ts`).
+- Reliability corpus assertions that map fixture expectations to repair-loop continuation outcomes (`runtime/test/reliability-corpus.test.ts`).
 
 ## [0.1.0] - 2026-02-21
 ### Added
