@@ -166,7 +166,13 @@ export function loadReliabilityFixtureCorpus(options = {}) {
     typeof options === "object" && options !== null && !Array.isArray(options) ? options : {};
 
   const corpusPath = resolveCorpusPath(normalizedOptions.corpusPath);
-  const source = readFileSync(corpusPath, "utf8");
+  let source;
+  try {
+    source = readFileSync(corpusPath, "utf8");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read reliability corpus at ${corpusPath}: ${message}`);
+  }
 
   let parsed;
   try {

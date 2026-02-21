@@ -183,3 +183,23 @@ test("reliability fixture corpus loader trims corpusPath option", async () => {
   assert.equal(corpusPath, absolutePath);
   assert.equal(corpus.schema_version, fixtureModule.RELIABILITY_CORPUS_SCHEMA_VERSION);
 });
+
+test("reliability fixture corpus loader includes path context on read failures", async () => {
+  const repoRoot = getRepoRoot();
+  const fixtureModule = await loadReliabilityFixtureModule();
+  const missingPath = resolve(repoRoot, "benchmarks/fixtures/reliability/does-not-exist.json");
+
+  assert.throws(
+    () =>
+      fixtureModule.loadReliabilityFixtureCorpus({
+        corpusPath: missingPath
+      }),
+    (error) => {
+      if (!(error instanceof Error)) {
+        return false;
+      }
+
+      return error.message.startsWith(`Failed to read reliability corpus at ${missingPath}:`);
+    }
+  );
+});
