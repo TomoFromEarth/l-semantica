@@ -83,6 +83,7 @@ test("repair loop stops when retry budget is exhausted", () => {
   assert.equal(result.continuationAllowed, false);
   assert.equal(result.reasonCode, "MAX_ATTEMPTS_EXCEEDED");
   assert.equal(result.attempts, 1);
+  assert.equal(result.appliedRuleId, "deterministic_runtime.retry_timeout_then_recover");
   assert.equal(result.history.length, 1);
   assert.equal(result.history[0].reasonCode, "DETERMINISTIC_TIMEOUT_RETRY");
 });
@@ -118,7 +119,12 @@ test("repair loop returns terminal stop for non-recoverable policy denials", () 
 });
 
 test("repair loop escalates on incompatible contract schema versions", () => {
-  const excerpts = ['"schema_version": "1.0.0"', '"schema_version": "0.2.0"', '"schema_version": "1.0.0-beta"'];
+  const excerpts = [
+    '"schema_version": "1.0.0"',
+    '"schema_version": "0.2.0"',
+    '"schema_version": "1.0.0-beta"',
+    '"schema_version": ""'
+  ];
 
   for (const excerpt of excerpts) {
     const result = runRepair({
@@ -198,6 +204,7 @@ test("repair loop stops after bounded retries for unresolved extraction ambiguit
   assert.equal(result.continuationAllowed, false);
   assert.equal(result.reasonCode, "MAX_ATTEMPTS_EXCEEDED");
   assert.equal(result.attempts, 2);
+  assert.equal(result.appliedRuleId, "stochastic_extraction_uncertainty.ambiguous_entity_unresolved");
   assert.deepEqual(
     result.history.map((entry) => entry.reasonCode),
     ["STOCHASTIC_AMBIGUITY_RETRY", "STOCHASTIC_AMBIGUITY_RETRY"]

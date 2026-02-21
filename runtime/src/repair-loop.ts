@@ -89,7 +89,7 @@ interface RepairRule {
 
 const DEFAULT_MAX_ATTEMPTS = 2;
 const ABSOLUTE_MAX_ATTEMPTS = 10;
-const SCHEMA_VERSION_EXCERPT_PATTERN = /"schema_version"\s*:\s*"([^"]+)"/;
+const SCHEMA_VERSION_EXCERPT_PATTERN = /"schema_version"\s*:\s*"([^"]*)"/;
 const NUMERIC_LITERAL_PATTERN = "([+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)";
 const CONFIDENCE_PATTERN = new RegExp(`confidence=${NUMERIC_LITERAL_PATTERN}`);
 const THRESHOLD_PATTERN = new RegExp(`threshold=${NUMERIC_LITERAL_PATTERN}`);
@@ -553,7 +553,8 @@ export function runRuleFirstRepairLoop(
             reasonCode: "MAX_ATTEMPTS_EXCEEDED",
             detail: `Maximum retry attempts reached (${maxAttempts}) after ${outcome.reasonCode}.`,
             attempts: attempt,
-            history
+            history,
+            appliedRuleId: rule.id
           });
         }
 
