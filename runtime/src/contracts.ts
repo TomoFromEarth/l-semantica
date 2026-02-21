@@ -38,14 +38,28 @@ export interface PolicyProfileContract {
   };
 }
 
+export interface VerificationCheckRequirement {
+  id: string;
+  description: string;
+  required: boolean;
+}
+
+export interface VerificationPolicyAssertion {
+  id: string;
+  policy_path: string;
+  expected: string | number | boolean;
+  required: boolean;
+  rationale?: string;
+}
+
 export interface VerificationContract {
   schema_version: string;
   contract_id: string;
   generated_at: string;
   requirements: {
-    tests: unknown[];
-    static_analysis: unknown[];
-    policy_assertions: unknown[];
+    tests: VerificationCheckRequirement[];
+    static_analysis: VerificationCheckRequirement[];
+    policy_assertions: VerificationPolicyAssertion[];
   };
   pass_criteria: {
     minimum_required_checks_pass_ratio: number;

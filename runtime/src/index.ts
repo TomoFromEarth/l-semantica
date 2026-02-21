@@ -16,6 +16,13 @@ import {
   emitFeedbackTensorEntry,
   type FeedbackTensorFailureClass
 } from "./feedback-tensor.ts";
+import {
+  createContinuationGateBypassDecision,
+  evaluateContinuationGate,
+  type ContinuationGateDecision,
+  type ContinuationGateReasonCode,
+  type EvaluateContinuationGateInput
+} from "./continuation-gate.ts";
 
 export interface SemanticIrEnvelope {
   version: string;
@@ -25,11 +32,13 @@ export interface SemanticIrEnvelope {
 export interface RuntimeResult {
   ok: true;
   traceId: string;
+  continuationDecision: ContinuationGateDecision;
 }
 
 export interface RunSemanticIrOptions {
   traceLedgerPath?: string;
   feedbackTensorPath?: string;
+  continuationGate?: EvaluateContinuationGateInput;
   now?: () => Date;
   runIdFactory?: () => string;
   feedbackIdFactory?: () => string;
@@ -49,6 +58,35 @@ class RuntimeSemanticIrValidationError extends Error {
     this.name = "Error";
     this.code = code;
     this.failureClass = "schema_contract";
+  }
+}
+
+function resolveContinuationGateFailureClass(
+  reasonCode: ContinuationGateReasonCode
+): FeedbackTensorFailureClass {
+  if (
+    reasonCode === "POLICY_PROFILE_REQUIRED" ||
+    reasonCode === "VERIFICATION_POLICY_ASSERTION_FAILED"
+  ) {
+    return "policy_gate";
+  }
+
+  return "deterministic_runtime";
+}
+
+export class RuntimeContinuationGateError extends Error {
+  readonly code: ContinuationGateReasonCode;
+  readonly decision: ContinuationGateDecision["decision"];
+  readonly failureClass: FeedbackTensorFailureClass;
+
+  constructor(decision: ContinuationGateDecision) {
+    super(
+      `Continuation gate returned "${decision.decision}" with reason "${decision.reasonCode}". Autonomous continuation is blocked.`
+    );
+    this.name = "Error";
+    this.code = decision.reasonCode;
+    this.decision = decision.decision;
+    this.failureClass = resolveContinuationGateFailureClass(decision.reasonCode);
   }
 }
 
@@ -161,6 +199,10 @@ function resolveTraceTimestamp(now: () => Date): string {
 
 function resolveRuntimeFailureClass(error: unknown): FeedbackTensorFailureClass {
   if (error instanceof RuntimeSemanticIrValidationError) {
+    return error.failureClass;
+  }
+
+  if (error instanceof RuntimeContinuationGateError) {
     return error.failureClass;
   }
 
@@ -284,6 +326,10 @@ function resolveRuntimeFailureCode(error: unknown, traceError: TraceLedgerError)
     return error.code;
   }
 
+  if (error instanceof RuntimeContinuationGateError) {
+    return error.code;
+  }
+
   if (error instanceof ContractValidationError) {
     return error.code;
   }
@@ -305,6 +351,7 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
   let invocationError: TraceLedgerError | undefined;
   let invocationFailureClass: FeedbackTensorFailureClass = "deterministic_runtime";
   let invocationFailureCode = "RUNTIME_INVOCATION_ERROR";
+  let continuationDecision = createContinuationGateBypassDecision();
   try {
     if (typeof ir !== "object" || ir === null || Array.isArray(ir)) {
       throw new RuntimeSemanticIrValidationError(
@@ -324,9 +371,17 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
       "SEMANTIC_IR_GOAL_REQUIRED"
     );
 
+    continuationDecision = options.continuationGate
+      ? evaluateContinuationGate(options.continuationGate)
+      : createContinuationGateBypassDecision();
+    if (continuationDecision.decision !== "continue") {
+      throw new RuntimeContinuationGateError(continuationDecision);
+    }
+
     return {
       ok: true,
-      traceId: `trace-${version}`
+      traceId: `trace-${version}`,
+      continuationDecision
     };
   } catch (error) {
     invocationError = toTraceLedgerError(error);
@@ -359,6 +414,19 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
     }
   }
 }
+
+export {
+  CONTINUATION_DECISIONS,
+  CONTINUATION_GATE_REASON_CODES,
+  createContinuationGateBypassDecision,
+  evaluateContinuationGate,
+  type ContinuationDecision,
+  type ContinuationGateDecision,
+  type ContinuationGateReasonCode,
+  type EvaluateContinuationGateInput,
+  type VerificationCheckResult,
+  type VerificationStatusSummary
+} from "./continuation-gate.ts";
 
 export {
   TRACE_LEDGER_SCHEMA_VERSION,

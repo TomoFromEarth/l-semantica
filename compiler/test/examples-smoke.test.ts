@@ -39,8 +39,8 @@ test("example smoke flow parses .ls and executes runtime against expected artifa
   assert.deepEqual(runtimeInput, expectedRuntimeInput);
 
   const runtimeResult = runSemanticIr(runtimeInput);
-  assert.deepEqual(runtimeResult, {
-    ok: true,
-    traceId: `trace-${expectedRuntimeInput.version}`
-  });
+  assert.equal(runtimeResult.ok, true);
+  assert.equal(runtimeResult.traceId, `trace-${expectedRuntimeInput.version}`);
+  assert.equal(runtimeResult.continuationDecision.decision, "continue");
+  assert.equal(runtimeResult.continuationDecision.reasonCode, "CONTINUATION_GATE_NOT_CONFIGURED");
 });
