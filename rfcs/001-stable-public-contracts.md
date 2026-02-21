@@ -66,7 +66,7 @@ Without stable contracts, compiler/runtime changes can break adapters, tooling, 
 Contract versions use `MAJOR.MINOR.PATCH` with the following required behavior:
 - `MAJOR`: breaking field or semantic changes. Consumers must reject artifacts with different major versions.
 - `MINOR`: additive, backwards-compatible changes. Compatibility direction is backward-only by default: a consumer supporting minor `N` must accept artifacts in the same major with minor `<= N`; support for newer minors (`> N`) is optional unless explicitly declared.
-- `PATCH`: non-breaking corrections/clarifications that do not change compatibility semantics.
+- `PATCH`: non-breaking corrections/clarifications that do not change compatibility semantics. Consumers should accept any patch value within a supported `MAJOR.MINOR` pair unless an explicit policy profile pins an exact patch.
 
 ### Compatibility Rules
 - Compiler emits contract versions in artifacts.
@@ -77,7 +77,7 @@ Additional compatibility requirements:
 1. Every artifact must include explicit versions for all applicable contracts.
 2. Compiler, runtime, and adapters must each publish supported version ranges per contract family.
 3. Version negotiation is deterministic: if no overlapping supported range exists, execution/build fails with a hard error.
-4. Compatibility violations are never warnings on autonomous paths.
+4. Compatibility violations are never warnings on autonomous paths (non-interactive compile/build/execute continuations that can proceed without additional human approval).
 
 ### Compiler vs Runtime Validation Boundary
 Compiler validation responsibilities (pre-execution):
