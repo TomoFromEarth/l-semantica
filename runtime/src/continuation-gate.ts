@@ -259,12 +259,16 @@ export function evaluateContinuationGate(input: EvaluateContinuationGateInput): 
   const assertionsToEnforce = verificationContract.pass_criteria.require_all_policy_assertions
     ? verificationContract.requirements.policy_assertions
     : requiredPolicyAssertions;
-
-  if (verificationContract.continuation.require_policy_profile && !input.policyProfile) {
+  const policyAssertionsRequireContext = assertionsToEnforce.length > 0;
+  if (
+    !input.policyProfile &&
+    (verificationContract.continuation.require_policy_profile || policyAssertionsRequireContext)
+  ) {
     return createFailureDecision({
       verificationContract,
       reasonCode: "POLICY_PROFILE_REQUIRED",
-      detail: "Verification continuation policy requires a validated PolicyProfile contract.",
+      detail:
+        "Verification continuation policy requires a validated PolicyProfile contract to evaluate policy assertions.",
       requiredChecksPassed: 0,
       requiredChecksTotal: requiredChecks.length + requiredPolicyAssertions.length,
       warningCount: 0

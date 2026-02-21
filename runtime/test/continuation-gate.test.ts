@@ -145,6 +145,30 @@ test("continuation gate stops when required feedback evidence fields are missing
   assert.equal(decision.missingFeedbackFields.includes("provenance"), true);
 });
 
+test("continuation gate requires policy profile when policy assertions must be evaluated", () => {
+  const runtimeContracts = loadRuntimeContracts({
+    semanticIr: validSemanticIr,
+    policyProfile: validPolicyProfile,
+    verificationContract: strictStopVerificationContract
+  });
+  const verificationContractWithoutPolicyRequirement = {
+    ...runtimeContracts.verificationContract,
+    continuation: {
+      ...runtimeContracts.verificationContract.continuation,
+      require_policy_profile: false
+    }
+  };
+
+  const decision = evaluateContinuationGate({
+    verificationContract: verificationContractWithoutPolicyRequirement,
+    verificationStatus: createStrictPassVerificationStatus(),
+    feedbackTensor: createFeedbackEvidence()
+  });
+
+  assert.equal(decision.decision, "stop");
+  assert.equal(decision.reasonCode, "POLICY_PROFILE_REQUIRED");
+});
+
 test("runSemanticIr blocks autonomous continuation when verification checks fail threshold", () => {
   const runtimeContracts = loadRuntimeContracts({
     semanticIr: validSemanticIr,
