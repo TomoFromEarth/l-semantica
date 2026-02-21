@@ -90,8 +90,9 @@ interface RepairRule {
 const DEFAULT_MAX_ATTEMPTS = 2;
 const ABSOLUTE_MAX_ATTEMPTS = 10;
 const SCHEMA_VERSION_EXCERPT_PATTERN = /"schema_version"\s*:\s*"([^"]+)"/;
-const CONFIDENCE_PATTERN = /confidence=([0-9]*\.?[0-9]+)/;
-const THRESHOLD_PATTERN = /threshold=([0-9]*\.?[0-9]+)/;
+const NUMERIC_LITERAL_PATTERN = "([+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)";
+const CONFIDENCE_PATTERN = new RegExp(`confidence=${NUMERIC_LITERAL_PATTERN}`);
+const THRESHOLD_PATTERN = new RegExp(`threshold=${NUMERIC_LITERAL_PATTERN}`);
 
 const EXPECTED_SCHEMA_VERSION_BY_ARTIFACT: Partial<Record<RepairArtifact, string>> = {
   semantic_ir: "0.1.0",
