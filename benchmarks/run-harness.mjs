@@ -22,6 +22,14 @@ function parseJsonFile(path) {
 function parseArgs(argv) {
   const options = {};
 
+  function readOptionValue(flagName, valueCandidate) {
+    if (!valueCandidate || valueCandidate === "--" || valueCandidate.startsWith("-")) {
+      throw new Error(`Missing value for ${flagName}`);
+    }
+
+    return valueCandidate;
+  }
+
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
@@ -30,21 +38,13 @@ function parseArgs(argv) {
     }
 
     if (arg === "--config") {
-      const value = argv[index + 1];
-      if (!value) {
-        throw new Error("Missing value for --config");
-      }
-      options.configPath = value;
+      options.configPath = readOptionValue("--config", argv[index + 1]);
       index += 1;
       continue;
     }
 
     if (arg === "--out") {
-      const value = argv[index + 1];
-      if (!value) {
-        throw new Error("Missing value for --out");
-      }
-      options.outputPath = value;
+      options.outputPath = readOptionValue("--out", argv[index + 1]);
       index += 1;
       continue;
     }

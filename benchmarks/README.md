@@ -17,7 +17,8 @@ node benchmarks/run-harness.mjs --config benchmarks/tasks.json --out benchmarks/
 ```
 
 Flag path behavior:
-- `--config` and `--out` are resolved from the current working directory.
+- explicit `--config` and `--out` values are resolved from the current working directory.
+- when omitted, defaults are resolved from the harness directory (`benchmarks/`).
 
 Defaults:
 - task list: `benchmarks/tasks.json`
