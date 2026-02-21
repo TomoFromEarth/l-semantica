@@ -126,9 +126,7 @@ function validateFixture(candidate, fixtureIndex, seenIds) {
   input.excerpt = excerpt;
 }
 
-export function validateReliabilityFixtureCorpus(corpus) {
-  const candidate = assertObject(corpus, "corpus");
-
+function validateAndNormalizeCorpus(candidate) {
   const schemaVersion = assertNonEmptyString(candidate.schema_version, "schema_version");
   candidate.schema_version = schemaVersion;
   if (schemaVersion !== RELIABILITY_CORPUS_SCHEMA_VERSION) {
@@ -150,6 +148,29 @@ export function validateReliabilityFixtureCorpus(corpus) {
   for (let index = 0; index < candidate.fixtures.length; index += 1) {
     validateFixture(candidate.fixtures[index], index, seenIds);
   }
+}
+
+function replaceObjectContents(target, source) {
+  for (const key of Object.keys(target)) {
+    delete target[key];
+  }
+
+  Object.assign(target, source);
+}
+
+export function validateReliabilityFixtureCorpus(corpus) {
+  const candidate = assertObject(corpus, "corpus");
+
+  let normalizedCandidate;
+  try {
+    normalizedCandidate = structuredClone(candidate);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Reliability corpus could not be cloned for validation: ${message}`);
+  }
+
+  validateAndNormalizeCorpus(normalizedCandidate);
+  replaceObjectContents(candidate, normalizedCandidate);
 }
 
 function resolveCorpusPath(pathOrUndefined) {

@@ -203,3 +203,28 @@ test("reliability fixture corpus loader includes path context on read failures",
     }
   );
 });
+
+test("reliability fixture corpus validation does not partially mutate on failure", async () => {
+  const repoRoot = getRepoRoot();
+  const corpusPath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
+  const fixtureModule = await loadReliabilityFixtureModule();
+  const corpus = readReliabilityCorpus(corpusPath);
+  const fixture = corpus.fixtures[0] as unknown as {
+    failure_class: string;
+    expected: { classification: string; continuation_allowed: boolean };
+  };
+
+  corpus.schema_version = ` ${corpus.schema_version} `;
+  fixture.failure_class = " parse ";
+  fixture.expected.classification = " parse ";
+  fixture.expected.continuation_allowed = false;
+
+  assert.throws(
+    () => fixtureModule.validateReliabilityFixtureCorpus(corpus),
+    /recoverable fixtures must allow continuation/
+  );
+
+  assert.equal(corpus.schema_version, ` ${fixtureModule.RELIABILITY_CORPUS_SCHEMA_VERSION} `);
+  assert.equal(fixture.failure_class, " parse ");
+  assert.equal(fixture.expected.classification, " parse ");
+});
