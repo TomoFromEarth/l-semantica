@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  ContractValidationError,
   SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION,
   SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION
 } from "./contracts.ts";
@@ -34,8 +35,32 @@ export interface RunSemanticIrOptions {
   feedbackIdFactory?: () => string;
 }
 
-function requireNonEmptyString(value: unknown, message: string): string {
+type RuntimeSemanticIrValidationCode =
+  | "SEMANTIC_IR_INPUT_INVALID"
+  | "SEMANTIC_IR_VERSION_REQUIRED"
+  | "SEMANTIC_IR_GOAL_REQUIRED";
+
+class RuntimeSemanticIrValidationError extends Error {
+  readonly code: RuntimeSemanticIrValidationCode;
+  readonly failureClass: FeedbackTensorFailureClass;
+
+  constructor(message: string, code: RuntimeSemanticIrValidationCode) {
+    super(message);
+    this.name = "Error";
+    this.code = code;
+    this.failureClass = "schema_contract";
+  }
+}
+
+function requireNonEmptyString(
+  value: unknown,
+  message: string,
+  validationCode?: RuntimeSemanticIrValidationCode
+): string {
   if (typeof value !== "string" || value.trim().length === 0) {
+    if (validationCode !== undefined) {
+      throw new RuntimeSemanticIrValidationError(message, validationCode);
+    }
     throw new Error(message);
   }
 
@@ -134,8 +159,12 @@ function resolveTraceTimestamp(now: () => Date): string {
   return new Date().toISOString();
 }
 
-function resolveRuntimeFailureClass(error: TraceLedgerError): FeedbackTensorFailureClass {
-  if (error.message.startsWith("SemanticIR")) {
+function resolveRuntimeFailureClass(error: unknown): FeedbackTensorFailureClass {
+  if (error instanceof RuntimeSemanticIrValidationError) {
+    return error.failureClass;
+  }
+
+  if (error instanceof ContractValidationError) {
     return "schema_contract";
   }
 
@@ -147,6 +176,8 @@ function emitRuntimeFailureFeedbackTensor(params: {
   generatedAt: string;
   feedbackTensorPath?: string;
   feedbackIdFactory: () => string;
+  failureClass: FeedbackTensorFailureClass;
+  errorCode: string;
   error: TraceLedgerError;
   traceEntryId?: string;
 }): void {
@@ -154,31 +185,30 @@ function emitRuntimeFailureFeedbackTensor(params: {
     return;
   }
 
-  const failureClass = resolveRuntimeFailureClass(params.error);
   const entry = createFeedbackTensorEntry({
     feedbackId: resolveFeedbackId(params.feedbackIdFactory),
     generatedAt: params.generatedAt,
     failureSignal: {
-      class: failureClass,
+      class: params.failureClass,
       stage: "runtime",
       summary: params.error.message,
       continuationAllowed: false,
-      errorCode: params.error.name
+      errorCode: params.errorCode
     },
     confidence: {
-      score: failureClass === "schema_contract" ? 0.9 : 0.7,
+      score: params.failureClass === "schema_contract" ? 0.9 : 0.7,
       rationale:
-        failureClass === "schema_contract"
+        params.failureClass === "schema_contract"
           ? "Input validation indicates a contract-shape violation before autonomous continuation."
           : "Runtime invocation failed with a deterministic local error signal.",
-      calibrationBand: failureClass === "schema_contract" ? "high" : "medium"
+      calibrationBand: params.failureClass === "schema_contract" ? "high" : "medium"
     },
     alternatives: [
       {
         id: "alt-deterministic-repair",
         hypothesis: "Run deterministic repair workflow over the failure payload.",
         expected_outcome: "Known failure classes can be auto-repaired without unsafe continuation.",
-        estimated_success_probability: failureClass === "schema_contract" ? 0.8 : 0.65
+        estimated_success_probability: params.failureClass === "schema_contract" ? 0.8 : 0.65
       },
       {
         id: "alt-manual-review",
@@ -192,7 +222,7 @@ function emitRuntimeFailureFeedbackTensor(params: {
       rationale:
         "Attempt deterministic repair-loop recovery before any policy-gated escalation path is chosen.",
       requires_human_approval: false,
-      target: failureClass === "schema_contract" ? "semantic_ir.contract" : "runtime.invocation"
+      target: params.failureClass === "schema_contract" ? "semantic_ir.contract" : "runtime.invocation"
     },
     provenance: {
       runId: params.runId,
@@ -216,9 +246,9 @@ function emitRuntimeTraceLedger(params: {
   completedAt: string;
   traceLedgerPath?: string;
   error?: TraceLedgerError;
-}): void {
+}): boolean {
   if (!params.traceLedgerPath) {
-    return;
+    return false;
   }
 
   const ledgerEntry: TraceLedgerEntryV0 = {
@@ -243,7 +273,22 @@ function emitRuntimeTraceLedger(params: {
 
   try {
     emitTraceLedgerEntry(ledgerEntry, { outputPath: params.traceLedgerPath });
+    return true;
   } catch {}
+
+  return false;
+}
+
+function resolveRuntimeFailureCode(error: unknown, traceError: TraceLedgerError): string {
+  if (error instanceof RuntimeSemanticIrValidationError) {
+    return error.code;
+  }
+
+  if (error instanceof ContractValidationError) {
+    return error.code;
+  }
+
+  return traceError.name;
 }
 
 export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOptions = {}): RuntimeResult {
@@ -258,16 +303,26 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
   const startedAt = traceLedgerPath ? resolveTraceTimestamp(now) : "";
 
   let invocationError: TraceLedgerError | undefined;
+  let invocationFailureClass: FeedbackTensorFailureClass = "deterministic_runtime";
+  let invocationFailureCode = "RUNTIME_INVOCATION_ERROR";
   try {
     if (typeof ir !== "object" || ir === null || Array.isArray(ir)) {
-      throw new Error("SemanticIR input must be an object");
+      throw new RuntimeSemanticIrValidationError(
+        "SemanticIR input must be an object",
+        "SEMANTIC_IR_INPUT_INVALID"
+      );
     }
 
     const version = requireNonEmptyString(
       (ir as { version?: unknown }).version,
-      "SemanticIR version is required"
+      "SemanticIR version is required",
+      "SEMANTIC_IR_VERSION_REQUIRED"
     );
-    requireNonEmptyString((ir as { goal?: unknown }).goal, "SemanticIR goal is required");
+    requireNonEmptyString(
+      (ir as { goal?: unknown }).goal,
+      "SemanticIR goal is required",
+      "SEMANTIC_IR_GOAL_REQUIRED"
+    );
 
     return {
       ok: true,
@@ -275,19 +330,20 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
     };
   } catch (error) {
     invocationError = toTraceLedgerError(error);
+    invocationFailureClass = resolveRuntimeFailureClass(error);
+    invocationFailureCode = resolveRuntimeFailureCode(error, invocationError);
     throw error;
   } finally {
     const completedAt = shouldResolveRunContext ? resolveTraceTimestamp(now) : "";
-
-    if (traceLedgerPath) {
-      emitRuntimeTraceLedger({
-        runId,
-        startedAt,
-        completedAt,
-        traceLedgerPath,
-        error: invocationError
-      });
-    }
+    const traceLedgerWritten = traceLedgerPath
+      ? emitRuntimeTraceLedger({
+          runId,
+          startedAt,
+          completedAt,
+          traceLedgerPath,
+          error: invocationError
+        })
+      : false;
 
     if (feedbackTensorPath && invocationError) {
       emitRuntimeFailureFeedbackTensor({
@@ -295,8 +351,10 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
         generatedAt: completedAt,
         feedbackTensorPath,
         feedbackIdFactory,
+        failureClass: invocationFailureClass,
+        errorCode: invocationFailureCode,
         error: invocationError,
-        traceEntryId: traceLedgerPath ? runId : undefined
+        traceEntryId: traceLedgerWritten ? runId : undefined
       });
     }
   }

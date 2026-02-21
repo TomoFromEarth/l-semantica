@@ -34,6 +34,7 @@ Execution engine, policy enforcement, and replay support.
 - Set `options.feedbackTensorPath` to append FeedbackTensor v1 JSON-lines records for failed runtime invocations.
 - Trace ledger emission is best-effort: write failures do not fail `runSemanticIr`.
 - FeedbackTensor emission is best-effort: write failures do not fail `runSemanticIr` or `runRuleFirstRepairLoop`.
+- Runtime FeedbackTensor `provenance.trace_entry_id` is populated only when trace-ledger append succeeds.
 - Hook evaluation (`runIdFactory`, `now`) occurs only when trace or feedback emission is enabled.
 - `run_id` is normalized to a non-empty value before emission.
 - Timestamp hooks are best-effort: invalid/throwing `options.now` values fall back to runtime clock time.

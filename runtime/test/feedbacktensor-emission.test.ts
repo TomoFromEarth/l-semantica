@@ -117,12 +117,52 @@ test("runtime emits linked FeedbackTensor records for failure and repair outcome
     }
 
     assert.equal(feedbackEntries[0].failure_signal.stage, "runtime");
+    assert.equal(feedbackEntries[0].failure_signal.class, "schema_contract");
+    assert.equal(feedbackEntries[0].failure_signal.error_code, "SEMANTIC_IR_VERSION_REQUIRED");
     assert.equal(feedbackEntries[0].provenance.source_stage, "runtime");
     assert.equal(feedbackEntries[0].failure_signal.continuation_allowed, false);
     assert.equal(feedbackEntries[1].failure_signal.stage, "repair");
     assert.equal(feedbackEntries[1].provenance.source_stage, "repair_loop");
     assert.equal(feedbackEntries[1].failure_signal.error_code, "DETERMINISTIC_TIMEOUT_RECOVERED");
     assert.equal(feedbackEntries[1].proposed_repair_action.action, "retry_with_patch");
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("runtime feedback omits trace_entry_id when trace ledger append fails", () => {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-feedback-emission-"));
+  const missingTraceLedgerPath = join(tmpRoot, "missing", "runtime-trace-ledger.ndjson");
+  const feedbackTensorPath = join(tmpRoot, "feedback-tensor.ndjson");
+  const runId = "run-feedback-no-trace-link-001";
+
+  try {
+    assert.throws(
+      () =>
+        runSemanticIr(
+          {
+            version: " ",
+            goal: "ship parser"
+          },
+          {
+            traceLedgerPath: missingTraceLedgerPath,
+            feedbackTensorPath,
+            runIdFactory: () => runId,
+            feedbackIdFactory: () => "ft-runtime-failure-no-trace-001",
+            now: makeDeterministicClock(["2026-02-21T22:20:00.000Z", "2026-02-21T22:20:01.000Z"])
+          }
+        ),
+      {
+        message: "SemanticIR version is required"
+      }
+    );
+
+    const feedbackEntries = readNdjsonEntries<FeedbackTensorV1>(feedbackTensorPath);
+    const validateFeedbackTensor = createFeedbackTensorValidator();
+    assert.equal(feedbackEntries.length, 1);
+    assert.equal(validateFeedbackTensor(feedbackEntries[0]), true);
+    assert.equal(feedbackEntries[0].provenance.run_id, runId);
+    assert.equal("trace_entry_id" in feedbackEntries[0].provenance, false);
   } finally {
     rmSync(tmpRoot, { recursive: true, force: true });
   }
