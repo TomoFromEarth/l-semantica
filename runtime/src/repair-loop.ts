@@ -168,27 +168,40 @@ function replaceSchemaVersionInExcerpt(excerpt: string, version: string): string
   return excerpt.replace(SCHEMA_VERSION_EXCERPT_PATTERN, `"schema_version": "${version}"`);
 }
 
-function parseConfidenceTuple(excerpt: string): { confidence: number; threshold: number } | undefined {
+function parseConfidenceTuple(
+  excerpt: string
+):
+  | {
+      confidence: number;
+      threshold: number;
+      confidenceLiteral: string;
+      thresholdLiteral: string;
+    }
+  | undefined {
   const confidenceMatch = CONFIDENCE_PATTERN.exec(excerpt);
   const thresholdMatch = THRESHOLD_PATTERN.exec(excerpt);
   if (!confidenceMatch || !thresholdMatch) {
     return undefined;
   }
 
-  const confidence = Number.parseFloat(confidenceMatch[1]);
-  const threshold = Number.parseFloat(thresholdMatch[1]);
+  const confidenceLiteral = confidenceMatch[1];
+  const thresholdLiteral = thresholdMatch[1];
+  const confidence = Number.parseFloat(confidenceLiteral);
+  const threshold = Number.parseFloat(thresholdLiteral);
   if (!Number.isFinite(confidence) || !Number.isFinite(threshold)) {
     return undefined;
   }
 
   return {
     confidence,
-    threshold
+    threshold,
+    confidenceLiteral,
+    thresholdLiteral
   };
 }
 
-function replaceConfidenceInExcerpt(excerpt: string, confidence: number): string {
-  return excerpt.replace(CONFIDENCE_PATTERN, `confidence=${confidence.toString()}`);
+function replaceConfidenceInExcerpt(excerpt: string, confidenceLiteral: string): string {
+  return excerpt.replace(CONFIDENCE_PATTERN, `confidence=${confidenceLiteral}`);
 }
 
 const REPAIR_RULES: RepairRule[] = [
@@ -430,7 +443,7 @@ const REPAIR_RULES: RepairRule[] = [
         type: "repaired",
         reasonCode: "STOCHASTIC_CONFIDENCE_RECOVERED",
         detail: "Confidence repaired to threshold using constrained deterministic re-prompting.",
-        repairedExcerpt: replaceConfidenceInExcerpt(context.excerpt, tuple.threshold)
+        repairedExcerpt: replaceConfidenceInExcerpt(context.excerpt, tuple.thresholdLiteral)
       };
     }
   },

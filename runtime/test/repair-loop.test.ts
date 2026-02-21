@@ -148,6 +148,22 @@ test("repair loop preserves threshold precision in stochastic confidence repair"
   assert.equal(result.repairedExcerpt?.includes("confidence=0.805"), true);
 });
 
+test("repair loop preserves threshold literal formatting for confidence repair", () => {
+  const result = runRepair(
+    {
+      failureClass: "stochastic_extraction_uncertainty",
+      stage: "extraction",
+      artifact: "model_output",
+      excerpt: "confidence=0.00000001; threshold=0.00000010"
+    },
+    2
+  );
+
+  assert.equal(result.decision, "repaired");
+  assert.equal(result.reasonCode, "STOCHASTIC_CONFIDENCE_RECOVERED");
+  assert.equal(result.repairedExcerpt?.includes("confidence=0.00000010"), true);
+});
+
 test("repair loop stops after bounded retries for unresolved extraction ambiguity", () => {
   const result = runRepair(
     {
