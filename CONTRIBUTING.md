@@ -19,6 +19,13 @@ Contributions are welcome for language design, compiler/runtime implementation, 
 - Backward-compatibility notes (if applicable)
 - Risks and tradeoffs documented
 
+## Changelog Standard
+- Track notable changes in `CHANGELOG.md` at repository root.
+- Add ongoing work under `## [Unreleased]` using these sections when relevant: `Added`, `Changed`, `Fixed`, `Removed`, `Security`.
+- On release, move entries from `Unreleased` into `## [x.y.z] - YYYY-MM-DD` (UTC).
+- Keep entries concise, user-visible, and link issue/PR IDs when available.
+- Do not rewrite historical entries except to correct factual mistakes.
+
 ## Commit Guidance
 Use clear, imperative commit messages:
 - `compiler: add AST node for goal declaration`
