@@ -92,7 +92,6 @@ const ABSOLUTE_MAX_ATTEMPTS = 10;
 const SCHEMA_VERSION_EXCERPT_PATTERN = /"schema_version"\s*:\s*"([^"]*)"/;
 const NUMERIC_LITERAL_PATTERN = "([+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)";
 const CONFIDENCE_PATTERN = new RegExp(`confidence=${NUMERIC_LITERAL_PATTERN}`);
-const THRESHOLD_PATTERN = new RegExp(`threshold=${NUMERIC_LITERAL_PATTERN}`);
 const CONFIDENCE_THRESHOLD_PAIR_PATTERN = new RegExp(
   `confidence=${NUMERIC_LITERAL_PATTERN}\\s*;\\s*threshold=${NUMERIC_LITERAL_PATTERN}|threshold=${NUMERIC_LITERAL_PATTERN}\\s*;\\s*confidence=${NUMERIC_LITERAL_PATTERN}`
 );
