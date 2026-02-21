@@ -1,3 +1,11 @@
+import { randomUUID } from "node:crypto";
+
+import {
+  SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION,
+  SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION
+} from "./contracts.ts";
+import { createFeedbackTensorEntry, emitFeedbackTensorEntry } from "./feedback-tensor.ts";
+
 export const REPAIR_FAILURE_CLASSES = [
   "parse",
   "schema_contract",
@@ -39,6 +47,12 @@ export interface RepairLoopInput {
 
 export interface RunRepairLoopOptions {
   maxAttempts?: number;
+  feedbackTensorPath?: string;
+  runId?: string;
+  traceEntryId?: string;
+  now?: () => Date;
+  runIdFactory?: () => string;
+  feedbackIdFactory?: () => string;
 }
 
 export interface RepairAttemptRecord {
@@ -165,6 +179,255 @@ function normalizeMaxAttempts(value: unknown): number {
   }
 
   return value;
+}
+
+function normalizeOptionalOutputPath(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeOptionalNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function createRunIdFallback(): string {
+  try {
+    const generated = randomUUID();
+    const normalized = generated.trim();
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  } catch {}
+
+  return `run-fallback-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function resolveRunId(params: { runId?: string; runIdFactory?: () => string }): string {
+  const explicitRunId = normalizeOptionalNonEmptyString(params.runId);
+  if (explicitRunId !== undefined) {
+    return explicitRunId;
+  }
+
+  if (params.runIdFactory) {
+    try {
+      const generated = params.runIdFactory();
+      const normalizedGenerated = normalizeOptionalNonEmptyString(generated);
+      if (normalizedGenerated !== undefined) {
+        return normalizedGenerated;
+      }
+    } catch {}
+  }
+
+  return createRunIdFallback();
+}
+
+function createFeedbackIdFallback(runId: string): string {
+  try {
+    const generated = randomUUID();
+    const normalized = generated.trim();
+    if (normalized.length > 0) {
+      return `ft-${runId}-${normalized}`;
+    }
+  } catch {}
+
+  return `ft-${runId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function resolveFeedbackId(feedbackIdFactory: () => string, runId: string): string {
+  try {
+    const generated = feedbackIdFactory();
+    const normalizedGenerated = normalizeOptionalNonEmptyString(generated);
+    if (normalizedGenerated !== undefined) {
+      return normalizedGenerated;
+    }
+  } catch {}
+
+  return createFeedbackIdFallback(runId);
+}
+
+function resolveTimestamp(now: () => Date): string {
+  try {
+    const candidate = now();
+    if (candidate instanceof Date && Number.isFinite(candidate.getTime())) {
+      return candidate.toISOString();
+    }
+  } catch {}
+
+  return new Date().toISOString();
+}
+
+function buildRepairFeedbackConfidence(result: RepairLoopResult): {
+  score: number;
+  rationale: string;
+  calibrationBand: "low" | "medium" | "high";
+} {
+  if (result.decision === "repaired") {
+    return {
+      score: 0.9,
+      rationale: "Deterministic repair rules produced a policy-safe continuation outcome.",
+      calibrationBand: "high"
+    };
+  }
+
+  if (result.decision === "escalate") {
+    return {
+      score: 0.45,
+      rationale: "No deterministic in-scope repair satisfied safety constraints for continuation.",
+      calibrationBand: "medium"
+    };
+  }
+
+  return {
+    score: 0.2,
+    rationale: "Repair loop reached an explicit terminal stop condition with continuation blocked.",
+    calibrationBand: "low"
+  };
+}
+
+function buildRepairFeedbackAlternatives(result: RepairLoopResult): Array<{
+  id: string;
+  hypothesis: string;
+  expected_outcome: string;
+  estimated_success_probability: number;
+}> {
+  if (result.decision === "repaired") {
+    return [
+      {
+        id: "alt-continue-with-repair",
+        hypothesis: "Proceed using the deterministic repaired payload.",
+        expected_outcome: "Execution continues with a bounded, reason-coded repair lineage.",
+        estimated_success_probability: 0.9
+      },
+      {
+        id: "alt-manual-verify-repair",
+        hypothesis: "Escalate the repaired payload for manual verification before continuation.",
+        expected_outcome: "Continuation remains blocked until a reviewer approves the repaired path.",
+        estimated_success_probability: 0.98
+      }
+    ];
+  }
+
+  if (result.decision === "escalate") {
+    return [
+      {
+        id: "alt-request-manual-review",
+        hypothesis: "Escalate repair decision to a human reviewer.",
+        expected_outcome: "Manual adjudication selects an approved remediation path.",
+        estimated_success_probability: 0.95
+      },
+      {
+        id: "alt-abort",
+        hypothesis: "Abort autonomous continuation for this run.",
+        expected_outcome: "System halts unsafe continuation until explicit external intervention.",
+        estimated_success_probability: 1
+      }
+    ];
+  }
+
+  return [
+    {
+      id: "alt-abort",
+      hypothesis: "Terminate autonomous continuation immediately.",
+      expected_outcome: "No unsafe continuation after terminal stop condition.",
+      estimated_success_probability: 1
+    },
+    {
+      id: "alt-manual-postmortem",
+      hypothesis: "Route full repair history to human review for postmortem triage.",
+      expected_outcome: "Reviewer determines whether to retry externally or leave run terminated.",
+      estimated_success_probability: 0.95
+    }
+  ];
+}
+
+function buildRepairFeedbackAction(
+  input: NormalizedRepairLoopInput,
+  result: RepairLoopResult
+): {
+  action: "retry_with_patch" | "request_manual_review" | "abort";
+  rationale: string;
+  requires_human_approval: boolean;
+  target: string;
+  patch_excerpt?: string;
+} {
+  if (result.decision === "repaired") {
+    return {
+      action: "retry_with_patch",
+      rationale: result.detail,
+      requires_human_approval: false,
+      target: `${input.stage}.${input.artifact}`,
+      patch_excerpt: result.repairedExcerpt
+    };
+  }
+
+  if (result.decision === "escalate") {
+    return {
+      action: "request_manual_review",
+      rationale: result.detail,
+      requires_human_approval: true,
+      target: `${input.stage}.${input.artifact}`
+    };
+  }
+
+  return {
+    action: "abort",
+    rationale: result.detail,
+    requires_human_approval: false,
+    target: `${input.stage}.${input.artifact}`
+  };
+}
+
+function emitRepairFeedbackTensor(params: {
+  input: NormalizedRepairLoopInput;
+  result: RepairLoopResult;
+  feedbackTensorPath: string;
+  runId: string;
+  now: () => Date;
+  feedbackIdFactory: () => string;
+  traceEntryId?: string;
+}): void {
+  const confidence = buildRepairFeedbackConfidence(params.result);
+  const action = buildRepairFeedbackAction(params.input, params.result);
+  const entry = createFeedbackTensorEntry({
+    feedbackId: resolveFeedbackId(params.feedbackIdFactory, params.runId),
+    generatedAt: resolveTimestamp(params.now),
+    failureSignal: {
+      class: params.result.classification,
+      stage: "repair",
+      summary: params.result.detail,
+      continuationAllowed: params.result.continuationAllowed,
+      errorCode: params.result.reasonCode
+    },
+    confidence: {
+      score: confidence.score,
+      rationale: confidence.rationale,
+      calibrationBand: confidence.calibrationBand
+    },
+    alternatives: buildRepairFeedbackAlternatives(params.result),
+    proposedRepairAction: action,
+    provenance: {
+      runId: params.runId,
+      sourceStage: "repair_loop",
+      traceEntryId: params.traceEntryId,
+      contractVersions: {
+        semanticIr: SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION,
+        policyProfile: SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION
+      }
+    }
+  });
+
+  try {
+    emitFeedbackTensorEntry(entry, { outputPath: params.feedbackTensorPath });
+  } catch {}
 }
 
 function getSchemaVersionFromExcerpt(excerpt: string): string | undefined {
@@ -532,9 +795,56 @@ export function runRuleFirstRepairLoop(
   const maxAttempts = normalizeMaxAttempts(options.maxAttempts);
   const orderedRules = REPAIR_RULES.filter((rule) => rule.failureClass === normalizedInput.failureClass);
   const history: RepairAttemptRecord[] = [];
+  const feedbackTensorPath = normalizeOptionalOutputPath(options.feedbackTensorPath);
+  const feedbackContext = (() => {
+    if (feedbackTensorPath === undefined) {
+      return undefined;
+    }
+
+    const runId = resolveRunId({
+      runId: options.runId,
+      runIdFactory: options.runIdFactory
+    });
+
+    return {
+      feedbackTensorPath,
+      runId,
+      now: options.now ?? (() => new Date()),
+      feedbackIdFactory: options.feedbackIdFactory ?? (() => createFeedbackIdFallback(runId)),
+      traceEntryId: normalizeOptionalNonEmptyString(options.traceEntryId)
+    };
+  })();
+
+  const createResult = (params: {
+    input: NormalizedRepairLoopInput;
+    maxAttempts: number;
+    decision: RepairDecision;
+    reasonCode: string;
+    detail: string;
+    attempts: number;
+    history: RepairAttemptRecord[];
+    appliedRuleId?: string;
+    repairedExcerpt?: string;
+  }): RepairLoopResult => {
+    const result = createTerminalResult(params);
+
+    if (feedbackContext) {
+      emitRepairFeedbackTensor({
+        input: normalizedInput,
+        result,
+        feedbackTensorPath: feedbackContext.feedbackTensorPath,
+        runId: feedbackContext.runId,
+        now: feedbackContext.now,
+        feedbackIdFactory: feedbackContext.feedbackIdFactory,
+        traceEntryId: feedbackContext.traceEntryId
+      });
+    }
+
+    return result;
+  };
 
   if (orderedRules.length === 0) {
-    return createTerminalResult({
+    return createResult({
       input: normalizedInput,
       maxAttempts,
       decision: "escalate",
@@ -577,7 +887,7 @@ export function runRuleFirstRepairLoop(
         }
 
         if (attempt === maxAttempts) {
-          return createTerminalResult({
+          return createResult({
             input: normalizedInput,
             maxAttempts,
             decision: "stop",
@@ -593,7 +903,7 @@ export function runRuleFirstRepairLoop(
       }
 
       if (outcome.type === "repaired") {
-        return createTerminalResult({
+        return createResult({
           input: normalizedInput,
           maxAttempts,
           decision: "repaired",
@@ -606,7 +916,7 @@ export function runRuleFirstRepairLoop(
         });
       }
 
-      return createTerminalResult({
+      return createResult({
         input: normalizedInput,
         maxAttempts,
         decision: outcome.type,
@@ -619,7 +929,7 @@ export function runRuleFirstRepairLoop(
     }
 
     if (!matchedRule) {
-      return createTerminalResult({
+      return createResult({
         input: normalizedInput,
         maxAttempts,
         decision: "escalate",
@@ -631,7 +941,7 @@ export function runRuleFirstRepairLoop(
     }
   }
 
-  return createTerminalResult({
+  return createResult({
     input: normalizedInput,
     maxAttempts,
     decision: "stop",
