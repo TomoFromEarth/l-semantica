@@ -1,0 +1,11 @@
+{
+  "schema_version": "0.1.0",
+  "tasks": [
+    {
+      "id": "grounded-response-minimal",
+      "name": "Grounded response minimal",
+      "baseline_fixture": "benchmarks/fixtures/baseline/grounded-response-minimal.txt",
+      "ls_fixture": "benchmarks/fixtures/ls/grounded-response-minimal.ls"
+    }
+  ]
+}
