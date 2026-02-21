@@ -3,7 +3,7 @@
 All notable changes to this project are documented in this file.
 
 This changelog follows Keep a Changelog style and Semantic Versioning.
-Before `1.0.0`, minor versions may include breaking changes.
+Before `1.0.0`, any release (minor or patch) may include breaking changes.
 
 ## [Unreleased]
 ### Added
