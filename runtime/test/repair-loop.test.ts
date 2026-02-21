@@ -136,6 +136,33 @@ test("repair loop returns terminal stop for non-recoverable policy denials", () 
   assert.equal(result.appliedRuleId, "policy_gate.terminal_deny_production_destructive_write");
 });
 
+test("repair loop applies deterministic policy fallback when plan is parseable", () => {
+  const result = runRepair({
+    failureClass: "policy_gate",
+    stage: "policy_gate",
+    artifact: "policy_profile",
+    excerpt: "max_tokens exceeded; fallback_plan=defer_to_human"
+  });
+
+  assert.equal(result.decision, "repaired");
+  assert.equal(result.continuationAllowed, true);
+  assert.equal(result.reasonCode, "POLICY_FALLBACK_PLAN_APPLIED");
+  assert.equal(result.repairedExcerpt?.includes("selected_fallback=defer_to_human"), true);
+});
+
+test("repair loop escalates when policy fallback plan is present but unparseable", () => {
+  const result = runRepair({
+    failureClass: "policy_gate",
+    stage: "policy_gate",
+    artifact: "policy_profile",
+    excerpt: "max_tokens exceeded; fallback_plan=defer-to-human"
+  });
+
+  assert.equal(result.decision, "escalate");
+  assert.equal(result.continuationAllowed, false);
+  assert.equal(result.reasonCode, "POLICY_FALLBACK_PLAN_UNPARSEABLE");
+});
+
 test("repair loop escalates on incompatible contract schema versions", () => {
   const excerpts = [
     '"schema_version": "1.0.0"',
@@ -205,6 +232,23 @@ test("repair loop supports scientific-notation confidence tuples", () => {
   assert.equal(result.decision, "repaired");
   assert.equal(result.reasonCode, "STOCHASTIC_CONFIDENCE_RECOVERED");
   assert.equal(result.repairedExcerpt?.includes("confidence=2e-7"), true);
+});
+
+test("repair loop binds confidence and threshold from the same tuple", () => {
+  const result = runRepair(
+    {
+      failureClass: "stochastic_extraction_uncertainty",
+      stage: "extraction",
+      artifact: "model_output",
+      excerpt: "threshold=0.9; bucket_b confidence=0.1; threshold=0.2; confidence=0.95"
+    },
+    2
+  );
+
+  assert.equal(result.decision, "repaired");
+  assert.equal(result.reasonCode, "STOCHASTIC_CONFIDENCE_RECOVERED");
+  assert.equal(result.repairedExcerpt?.includes("bucket_b confidence=0.2; threshold=0.2"), true);
+  assert.equal(result.repairedExcerpt?.includes("bucket_b confidence=0.9; threshold=0.2"), false);
 });
 
 test("repair loop stops after bounded retries for unresolved extraction ambiguity", () => {

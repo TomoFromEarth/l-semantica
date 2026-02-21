@@ -93,6 +93,10 @@ const SCHEMA_VERSION_EXCERPT_PATTERN = /"schema_version"\s*:\s*"([^"]*)"/;
 const NUMERIC_LITERAL_PATTERN = "([+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)";
 const CONFIDENCE_PATTERN = new RegExp(`confidence=${NUMERIC_LITERAL_PATTERN}`);
 const THRESHOLD_PATTERN = new RegExp(`threshold=${NUMERIC_LITERAL_PATTERN}`);
+const CONFIDENCE_THRESHOLD_PAIR_PATTERN = new RegExp(
+  `confidence=${NUMERIC_LITERAL_PATTERN}\\s*;\\s*threshold=${NUMERIC_LITERAL_PATTERN}|threshold=${NUMERIC_LITERAL_PATTERN}\\s*;\\s*confidence=${NUMERIC_LITERAL_PATTERN}`
+);
+const FALLBACK_PLAN_PATTERN = /fallback_plan=([a-z0-9_]+)(?=;|\s|$)/i;
 
 const EXPECTED_SCHEMA_VERSION_BY_ARTIFACT: Partial<Record<RepairArtifact, string>> = {
   semantic_ir: "0.1.0",
@@ -183,14 +187,17 @@ function parseConfidenceTuple(
       thresholdLiteral: string;
     }
   | undefined {
-  const confidenceMatch = CONFIDENCE_PATTERN.exec(excerpt);
-  const thresholdMatch = THRESHOLD_PATTERN.exec(excerpt);
-  if (!confidenceMatch || !thresholdMatch) {
+  const tupleMatch = CONFIDENCE_THRESHOLD_PAIR_PATTERN.exec(excerpt);
+  if (!tupleMatch) {
     return undefined;
   }
 
-  const confidenceLiteral = confidenceMatch[1];
-  const thresholdLiteral = thresholdMatch[1];
+  const confidenceLiteral = tupleMatch[1] ?? tupleMatch[4];
+  const thresholdLiteral = tupleMatch[2] ?? tupleMatch[3];
+  if (confidenceLiteral === undefined || thresholdLiteral === undefined) {
+    return undefined;
+  }
+
   const confidence = Number.parseFloat(confidenceLiteral);
   const threshold = Number.parseFloat(thresholdLiteral);
   if (!Number.isFinite(confidence) || !Number.isFinite(threshold)) {
@@ -316,8 +323,16 @@ const REPAIR_RULES: RepairRule[] = [
       context.excerpt.includes("max_tokens exceeded") &&
       context.excerpt.includes("fallback_plan="),
     apply: (context) => {
-      const fallbackMatch = /fallback_plan=([a-z0-9_]+)/i.exec(context.excerpt);
-      const fallbackPlan = fallbackMatch?.[1] ?? "unknown";
+      const fallbackMatch = FALLBACK_PLAN_PATTERN.exec(context.excerpt);
+      if (!fallbackMatch) {
+        return {
+          type: "escalate",
+          reasonCode: "POLICY_FALLBACK_PLAN_UNPARSEABLE",
+          detail: "Policy fallback plan could not be deterministically identified."
+        };
+      }
+
+      const fallbackPlan = fallbackMatch[1];
       return {
         type: "repaired",
         reasonCode: "POLICY_FALLBACK_PLAN_APPLIED",
