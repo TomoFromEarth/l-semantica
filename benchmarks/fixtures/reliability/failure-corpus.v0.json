@@ -1,0 +1,187 @@
+{
+  "schema_version": "0.1.0",
+  "corpus_id": "m1-failure-classes-v0",
+  "description": "Reliability fixtures for M1 failure-class coverage and continuation expectations.",
+  "fixtures": [
+    {
+      "id": "parse-missing-goal-quote-recoverable",
+      "failure_class": "parse",
+      "scenario": "Goal declaration has a missing closing quote and can be auto-repaired.",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "parse",
+        "continuation_allowed": true
+      },
+      "input": {
+        "stage": "compile",
+        "artifact": "ls_source",
+        "excerpt": "goal \"Ship release"
+      }
+    },
+    {
+      "id": "parse-truncated-document-non-recoverable",
+      "failure_class": "parse",
+      "scenario": "Source payload is truncated and lacks enough syntax context for deterministic repair.",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "parse",
+        "continuation_allowed": false
+      },
+      "input": {
+        "stage": "compile",
+        "artifact": "ls_source",
+        "excerpt": "goal \""
+      }
+    },
+    {
+      "id": "schema-contract-policy-profile-whitespace-version-recoverable",
+      "failure_class": "schema_contract",
+      "scenario": "PolicyProfile schema version contains trailing whitespace and can be normalized.",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "schema_contract",
+        "continuation_allowed": true
+      },
+      "input": {
+        "stage": "contract_load",
+        "artifact": "policy_profile",
+        "excerpt": "\"schema_version\": \"0.1.0   \""
+      }
+    },
+    {
+      "id": "schema-contract-semanticir-major-version-non-recoverable",
+      "failure_class": "schema_contract",
+      "scenario": "SemanticIR uses an unsupported major version.",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "schema_contract",
+        "continuation_allowed": false
+      },
+      "input": {
+        "stage": "contract_load",
+        "artifact": "semantic_ir",
+        "excerpt": "\"schema_version\": \"1.0.0\""
+      }
+    },
+    {
+      "id": "policy-gate-budget-overrun-fallback-recoverable",
+      "failure_class": "policy_gate",
+      "scenario": "Token budget gate blocks primary strategy, but a lower-cost fallback path is policy-compliant.",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "policy_gate",
+        "continuation_allowed": true
+      },
+      "input": {
+        "stage": "policy_gate",
+        "artifact": "policy_profile",
+        "excerpt": "max_tokens exceeded; fallback_plan=summary_mode"
+      }
+    },
+    {
+      "id": "policy-gate-prod-destructive-write-non-recoverable",
+      "failure_class": "policy_gate",
+      "scenario": "Production policy blocks destructive write with no approved exception path.",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "policy_gate",
+        "continuation_allowed": false
+      },
+      "input": {
+        "stage": "policy_gate",
+        "artifact": "policy_profile",
+        "excerpt": "action=delete_resource; environment=production; rule=deny"
+      }
+    },
+    {
+      "id": "capability-denied-readonly-fallback-recoverable",
+      "failure_class": "capability_denied",
+      "scenario": "Requested write capability is unavailable, but read-only inspection path satisfies objective.",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "capability_denied",
+        "continuation_allowed": true
+      },
+      "input": {
+        "stage": "runtime",
+        "artifact": "capability_manifest",
+        "excerpt": "requested=filesystem.write; available=filesystem.read"
+      }
+    },
+    {
+      "id": "capability-denied-missing-network-non-recoverable",
+      "failure_class": "capability_denied",
+      "scenario": "Required network capability is absent and no offline fallback exists.",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "capability_denied",
+        "continuation_allowed": false
+      },
+      "input": {
+        "stage": "runtime",
+        "artifact": "capability_manifest",
+        "excerpt": "requested=network.http; available=[]"
+      }
+    },
+    {
+      "id": "deterministic-runtime-retriable-timeout-recoverable",
+      "failure_class": "deterministic_runtime",
+      "scenario": "Deterministic action times out, and bounded retry policy can recover.",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "deterministic_runtime",
+        "continuation_allowed": true
+      },
+      "input": {
+        "stage": "runtime",
+        "artifact": "runtime_event",
+        "excerpt": "step=resolve_manifest; error=timeout; retryable=true"
+      }
+    },
+    {
+      "id": "deterministic-runtime-invariant-violation-non-recoverable",
+      "failure_class": "deterministic_runtime",
+      "scenario": "Runtime invariant violation indicates corrupted deterministic state.",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "deterministic_runtime",
+        "continuation_allowed": false
+      },
+      "input": {
+        "stage": "runtime",
+        "artifact": "runtime_event",
+        "excerpt": "node_output missing for required dependency"
+      }
+    },
+    {
+      "id": "stochastic-extraction-low-confidence-recoverable",
+      "failure_class": "stochastic_extraction_uncertainty",
+      "scenario": "Extraction confidence is below target but can be raised with constrained re-prompting.",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "stochastic_extraction_uncertainty",
+        "continuation_allowed": true
+      },
+      "input": {
+        "stage": "extraction",
+        "artifact": "model_output",
+        "excerpt": "confidence=0.52; threshold=0.75"
+      }
+    },
+    {
+      "id": "stochastic-extraction-ambiguous-entity-non-recoverable",
+      "failure_class": "stochastic_extraction_uncertainty",
+      "scenario": "Entity extraction remains ambiguous after bounded retries.",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "stochastic_extraction_uncertainty",
+        "continuation_allowed": false
+      },
+      "input": {
+        "stage": "extraction",
+        "artifact": "model_output",
+        "excerpt": "top_candidates overlap with confidence delta < 0.02"
+      }
+    }
+  ]
+}
