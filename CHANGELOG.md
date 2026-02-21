@@ -13,6 +13,9 @@ Before `1.0.0`, any release (minor or patch) may include breaking changes.
 - FeedbackTensor v1 contract draft schema and spec documentation (`docs/spec/schemas/feedbacktensor-v1.schema.json`, `docs/spec/feedbacktensor-v1.md`).
 - FeedbackTensor valid/invalid fixture corpus for schema conformance coverage (`docs/spec/examples/feedbacktensor/`).
 - Runtime schema validation tests for FeedbackTensor fixtures with actionable error assertions (`runtime/test/feedbacktensor-schema.test.ts`).
+- VerificationContract v1 contract draft schema and spec documentation (`docs/spec/schemas/verificationcontract-v1.schema.json`, `docs/spec/verificationcontract-v1.md`).
+- VerificationContract valid/invalid fixture corpus and runtime schema validation tests (`docs/spec/examples/verificationcontract/`, `runtime/test/verificationcontract-schema.test.ts`).
+- Runtime contract loader support for VerificationContract v1 validation and compatibility checks (`runtime/src/contracts.ts`, `runtime/test/contract-loader.test.ts`).
 
 ## [0.1.0] - 2026-02-21
 ### Added

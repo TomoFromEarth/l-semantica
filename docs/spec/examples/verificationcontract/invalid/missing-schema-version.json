@@ -1,0 +1,43 @@
+{
+  "contract_id": "verification-missing-schema-version",
+  "generated_at": "2026-02-21T16:32:00Z",
+  "requirements": {
+    "tests": [
+      {
+        "id": "runtime.contract-loader",
+        "description": "Runtime contract loader tests pass",
+        "required": true
+      }
+    ],
+    "static_analysis": [
+      {
+        "id": "workspace.typecheck",
+        "description": "Workspace typecheck succeeds",
+        "required": true
+      }
+    ],
+    "policy_assertions": [
+      {
+        "id": "policy.review-on-violation",
+        "policy_path": "constraints.require_human_review_on_policy_violation",
+        "expected": true,
+        "required": true
+      }
+    ]
+  },
+  "pass_criteria": {
+    "minimum_required_checks_pass_ratio": 1,
+    "require_all_policy_assertions": true,
+    "max_warning_count": 0
+  },
+  "continuation": {
+    "on_success": "continue",
+    "on_failure": "stop",
+    "require_policy_profile": true,
+    "required_feedback_tensor_fields": [
+      "failure_signal",
+      "confidence",
+      "provenance"
+    ]
+  }
+}

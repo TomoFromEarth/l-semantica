@@ -38,12 +38,35 @@ export interface PolicyProfileContract {
   };
 }
 
+export interface VerificationContract {
+  schema_version: string;
+  contract_id: string;
+  generated_at: string;
+  requirements: {
+    tests: unknown[];
+    static_analysis: unknown[];
+    policy_assertions: unknown[];
+  };
+  pass_criteria: {
+    minimum_required_checks_pass_ratio: number;
+    require_all_policy_assertions: boolean;
+    max_warning_count: number;
+  };
+  continuation: {
+    on_success: "continue";
+    on_failure: "escalate" | "stop";
+    require_policy_profile: boolean;
+    required_feedback_tensor_fields: string[];
+  };
+}
+
 export interface RuntimeContracts {
   semanticIr: SemanticIrContract;
   policyProfile: PolicyProfileContract;
+  verificationContract: VerificationContract;
 }
 
-export type ContractName = "RuntimeContracts" | "SemanticIR" | "PolicyProfile";
+export type ContractName = "RuntimeContracts" | "SemanticIR" | "PolicyProfile" | "VerificationContract";
 export type ContractValidationCode =
   | "INVALID_INPUT"
   | "VERSION_INCOMPATIBLE"
@@ -76,6 +99,7 @@ export class ContractValidationError extends Error {
 
 export const SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION = "0.1.0";
 export const SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION = "0.1.0";
+export const SUPPORTED_VERIFICATION_CONTRACT_SCHEMA_VERSION = "1.0.0";
 
 type Ajv2020Constructor = new (options: { allErrors: boolean }) => {
   compile(schema: object): ValidateFunction;
@@ -84,6 +108,7 @@ type Ajv2020Constructor = new (options: { allErrors: boolean }) => {
 interface ContractValidators {
   validateSemanticIr: ValidateFunction;
   validatePolicyProfile: ValidateFunction;
+  validateVerificationContract: ValidateFunction;
 }
 
 let contractValidators: ContractValidators | null = null;
@@ -126,7 +151,10 @@ function getContractValidators(): ContractValidators {
   const ajv = new Ajv2020Constructor({ allErrors: true });
   contractValidators = {
     validateSemanticIr: ajv.compile(loadSchema("../../docs/spec/schemas/semanticir-v0.schema.json")),
-    validatePolicyProfile: ajv.compile(loadSchema("../../docs/spec/schemas/policyprofile-v0.schema.json"))
+    validatePolicyProfile: ajv.compile(loadSchema("../../docs/spec/schemas/policyprofile-v0.schema.json")),
+    validateVerificationContract: ajv.compile(
+      loadSchema("../../docs/spec/schemas/verificationcontract-v1.schema.json")
+    )
   };
 
   return contractValidators;
@@ -162,7 +190,7 @@ function mapAjvIssues(errors: ErrorObject[] | null | undefined): ContractValidat
 }
 
 function requireCompatibleSchemaVersion(
-  contract: "SemanticIR" | "PolicyProfile",
+  contract: "SemanticIR" | "PolicyProfile" | "VerificationContract",
   value: Record<string, unknown>,
   expectedVersion: string
 ): void {
@@ -229,7 +257,7 @@ function requireCompatibleSchemaVersion(
 }
 
 function validateContract(
-  contract: "SemanticIR" | "PolicyProfile",
+  contract: "SemanticIR" | "PolicyProfile" | "VerificationContract",
   validator: ValidateFunction,
   value: Record<string, unknown>
 ): void {
@@ -280,11 +308,24 @@ export function loadPolicyProfileContract(input: unknown): PolicyProfileContract
   return candidate as unknown as PolicyProfileContract;
 }
 
+export function loadVerificationContract(input: unknown): VerificationContract {
+  const candidate = requireRecord(input, "VerificationContract");
+  const { validateVerificationContract } = getContractValidators();
+  requireCompatibleSchemaVersion(
+    "VerificationContract",
+    candidate,
+    SUPPORTED_VERIFICATION_CONTRACT_SCHEMA_VERSION
+  );
+  validateContract("VerificationContract", validateVerificationContract, candidate);
+  return candidate as unknown as VerificationContract;
+}
+
 export function loadRuntimeContracts(input: unknown): RuntimeContracts {
   const candidate = requireRecord(input, "RuntimeContracts");
 
   return {
     semanticIr: loadSemanticIrContract(candidate.semanticIr),
-    policyProfile: loadPolicyProfileContract(candidate.policyProfile)
+    policyProfile: loadPolicyProfileContract(candidate.policyProfile),
+    verificationContract: loadVerificationContract(candidate.verificationContract)
   };
 }

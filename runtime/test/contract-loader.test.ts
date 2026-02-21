@@ -6,6 +6,7 @@ import {
   ContractValidationError,
   SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION,
   SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION,
+  SUPPORTED_VERIFICATION_CONTRACT_SCHEMA_VERSION,
   loadRuntimeContracts
 } from "../src/index.ts";
 
@@ -17,7 +18,7 @@ function loadJson(relativePathFromThisTest: string): unknown {
 function expectContractValidationError(
   operation: () => unknown,
   expectation: {
-    contract: "RuntimeContracts" | "SemanticIR" | "PolicyProfile";
+    contract: "RuntimeContracts" | "SemanticIR" | "PolicyProfile" | "VerificationContract";
     code: "INVALID_INPUT" | "VERSION_INCOMPATIBLE" | "SCHEMA_VALIDATION_FAILED";
     messageIncludes: string;
     issues?: {
@@ -62,15 +63,23 @@ const validSemanticIr = loadJson("../../docs/spec/examples/semanticir/valid/cano
 const validPolicyProfile = loadJson(
   "../../docs/spec/examples/policyprofile/valid/production-restricted.json"
 );
+const validVerificationContract = loadJson(
+  "../../docs/spec/examples/verificationcontract/valid/strict-stop-on-failure.json"
+);
 
 test("loadRuntimeContracts returns validated contracts for valid inputs", () => {
   const result = loadRuntimeContracts({
     semanticIr: validSemanticIr,
-    policyProfile: validPolicyProfile
+    policyProfile: validPolicyProfile,
+    verificationContract: validVerificationContract
   });
 
   assert.equal(result.semanticIr.schema_version, SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION);
   assert.equal(result.policyProfile.schema_version, SUPPORTED_POLICY_PROFILE_SCHEMA_VERSION);
+  assert.equal(
+    result.verificationContract.schema_version,
+    SUPPORTED_VERIFICATION_CONTRACT_SCHEMA_VERSION
+  );
 });
 
 test("loadRuntimeContracts rejects non-object contract payload", () => {
@@ -91,7 +100,8 @@ test("loadRuntimeContracts rejects invalid SemanticIR payload with validation er
     () =>
       loadRuntimeContracts({
         semanticIr: invalidSemanticIr,
-        policyProfile: validPolicyProfile
+        policyProfile: validPolicyProfile,
+        verificationContract: validVerificationContract
       }),
     {
       contract: "SemanticIR",
@@ -115,7 +125,8 @@ test("loadRuntimeContracts rejects invalid PolicyProfile payload with validation
     () =>
       loadRuntimeContracts({
         semanticIr: validSemanticIr,
-        policyProfile: invalidPolicyProfile
+        policyProfile: invalidPolicyProfile,
+        verificationContract: validVerificationContract
       }),
     {
       contract: "PolicyProfile",
@@ -125,6 +136,31 @@ test("loadRuntimeContracts rejects invalid PolicyProfile payload with validation
         minCount: 1,
         hasKeyword: "minItems",
         hasInstancePath: "/capability_policy/escalation_requirements/rules"
+      }
+    }
+  );
+});
+
+test("loadRuntimeContracts rejects invalid VerificationContract payload with validation error", () => {
+  const invalidVerificationContract = loadJson(
+    "../../docs/spec/examples/verificationcontract/invalid/invalid-on-failure-decision.json"
+  );
+
+  expectContractValidationError(
+    () =>
+      loadRuntimeContracts({
+        semanticIr: validSemanticIr,
+        policyProfile: validPolicyProfile,
+        verificationContract: invalidVerificationContract
+      }),
+    {
+      contract: "VerificationContract",
+      code: "SCHEMA_VALIDATION_FAILED",
+      messageIncludes: "VerificationContract contract validation failed",
+      issues: {
+        minCount: 1,
+        hasKeyword: "enum",
+        hasInstancePath: "/continuation/on_failure"
       }
     }
   );
@@ -140,7 +176,8 @@ test("loadRuntimeContracts reports SemanticIR version incompatibility explicitly
     () =>
       loadRuntimeContracts({
         semanticIr: semanticIrWithUnsupportedVersion,
-        policyProfile: validPolicyProfile
+        policyProfile: validPolicyProfile,
+        verificationContract: validVerificationContract
       }),
     {
       contract: "SemanticIR",
@@ -165,12 +202,39 @@ test("loadRuntimeContracts reports PolicyProfile version incompatibility explici
     () =>
       loadRuntimeContracts({
         semanticIr: validSemanticIr,
-        policyProfile: policyProfileWithUnsupportedVersion
+        policyProfile: policyProfileWithUnsupportedVersion,
+        verificationContract: validVerificationContract
       }),
     {
       contract: "PolicyProfile",
       code: "VERSION_INCOMPATIBLE",
       messageIncludes: 'incompatible; expected "0.1.0"',
+      issues: {
+        minCount: 1,
+        hasKeyword: "const",
+        hasInstancePath: "/schema_version"
+      }
+    }
+  );
+});
+
+test("loadRuntimeContracts reports VerificationContract version incompatibility explicitly", () => {
+  const verificationContractWithUnsupportedVersion = {
+    ...(validVerificationContract as Record<string, unknown>),
+    schema_version: "1.1.0"
+  };
+
+  expectContractValidationError(
+    () =>
+      loadRuntimeContracts({
+        semanticIr: validSemanticIr,
+        policyProfile: validPolicyProfile,
+        verificationContract: verificationContractWithUnsupportedVersion
+      }),
+    {
+      contract: "VerificationContract",
+      code: "VERSION_INCOMPATIBLE",
+      messageIncludes: 'incompatible; expected "1.0.0"',
       issues: {
         minCount: 1,
         hasKeyword: "const",
@@ -190,7 +254,8 @@ test("loadRuntimeContracts reports schema_version type errors explicitly", () =>
     () =>
       loadRuntimeContracts({
         semanticIr: semanticIrWithTypeError,
-        policyProfile: validPolicyProfile
+        policyProfile: validPolicyProfile,
+        verificationContract: validVerificationContract
       }),
     {
       contract: "SemanticIR",
