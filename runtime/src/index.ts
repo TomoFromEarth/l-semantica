@@ -202,3 +202,20 @@ export {
   type SemanticIrContract,
   type VerificationContract
 } from "./contracts.ts";
+
+export {
+  REPAIR_ARTIFACTS,
+  REPAIR_FAILURE_CLASSES,
+  REPAIR_STAGES,
+  RULE_FIRST_REPAIR_ORDER,
+  runRuleFirstRepairLoop,
+  type RepairArtifact,
+  type RepairAttemptOutcome,
+  type RepairAttemptRecord,
+  type RepairDecision,
+  type RepairFailureClass,
+  type RepairLoopInput,
+  type RepairLoopResult,
+  type RepairStage,
+  type RunRepairLoopOptions
+} from "./repair-loop.ts";

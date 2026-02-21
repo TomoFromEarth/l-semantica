@@ -4,6 +4,13 @@ import { resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import {
+  runRuleFirstRepairLoop,
+  type RepairArtifact,
+  type RepairFailureClass,
+  type RepairStage
+} from "../src/index.ts";
+
 type FailureClass =
   | "parse"
   | "schema_contract"
@@ -102,6 +109,31 @@ test("reliability fixture corpus loads with required failure-class coverage", as
     assert.notEqual(recoverabilityValues, undefined);
     assert.equal(recoverabilityValues?.has("recoverable"), true);
     assert.equal(recoverabilityValues?.has("non_recoverable"), true);
+  }
+});
+
+test("rule-first repair loop matches reliability fixture continuation expectations", async () => {
+  const repoRoot = getRepoRoot();
+  const corpusPath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
+  const fixtureModule = await loadReliabilityFixtureModule();
+  const { corpus } = fixtureModule.loadReliabilityFixtureCorpus({ corpusPath });
+
+  for (const fixture of corpus.fixtures) {
+    const result = runRuleFirstRepairLoop({
+      failureClass: fixture.failure_class as RepairFailureClass,
+      stage: fixture.input.stage as RepairStage,
+      artifact: fixture.input.artifact as RepairArtifact,
+      excerpt: fixture.input.excerpt
+    });
+
+    assert.equal(result.classification, fixture.expected.classification);
+    assert.equal(result.continuationAllowed, fixture.expected.continuation_allowed);
+
+    if (fixture.recoverability === "recoverable") {
+      assert.equal(result.decision, "repaired");
+    } else {
+      assert.notEqual(result.decision, "repaired");
+    }
   }
 });
 
