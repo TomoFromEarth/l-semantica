@@ -286,3 +286,47 @@ const prBundle = createPrBundleArtifact({
   toolVersion: "l-semantica@0.1.0-dev"
 });
 ```
+
+## Apply / Rollback Record (M2 `#56`)
+- `createApplyRollbackRecordArtifact({ action, prBundle, workspaceRoot, ...options })` consumes `ls.m2.pr_bundle@1.0.0` and emits `ls.m2.apply_rollback_record@1.0.0`.
+- The controller validates PR-bundle patch/verification/rollback/readiness sections strictly (including digest checks) and fails closed on malformed upstream artifacts.
+- Apply checks enforce RFC-002 gates before any execution: upstream patch-run outcome, PR-bundle readiness, verification completeness/pass state, rollback availability, policy/capability/approval constraints, and target-state preconditions.
+- Rollback requires a prior successful apply record (`previousApplyRecord`) and validates restore snapshots / rollback package linkage before execution.
+- `decision` uses RFC-002 reason-coded outcomes (`ok`, `policy_blocked`, `undeclared_capability`, `rollback_unavailable`, `verification_*`, `conflict_detected`, etc.).
+- Local mutation is explicit: set `execute: true` and declare the required capability (`workspace.apply_patch` or `workspace.rollback_patch`). Default behavior is dry-run (`execute: false`) with an auditable decision artifact.
+- Optional benchmark evidence (`ls.m2.legacy_benchmark_report@1.0.0`) can be linked and enforced with `requireBenchmarkValidGain: true` to stop apply when `valid_gain=false` or the quality floor regresses.
+- `payload.execution` records deterministic before/after snapshots for touched paths; successful rollback restores the prior apply snapshot for supported local deterministic scenarios.
+
+Example:
+
+```ts
+import { createApplyRollbackRecordArtifact } from "@l-semantica/runtime";
+
+const applyRecord = createApplyRollbackRecordArtifact({
+  action: "apply",
+  prBundle,
+  workspaceRoot: process.cwd(),
+  execute: true,
+  declaredCapabilities: ["workspace.apply_patch"],
+  approvalEvidenceRef: "approval://change-ticket/123",
+  policyProfileRef: "policy.local-dev.v1",
+  verificationContractRef: "verification.m2.v1",
+  targetWorkspaceRef: "workspace://local-dev",
+  now: () => new Date("2026-02-22T12:00:40Z"),
+  toolVersion: "l-semantica@0.1.0-dev"
+});
+
+const rollbackRecord = createApplyRollbackRecordArtifact({
+  action: "rollback",
+  prBundle,
+  previousApplyRecord: applyRecord,
+  workspaceRoot: process.cwd(),
+  execute: true,
+  declaredCapabilities: ["workspace.rollback_patch"],
+  policyProfileRef: "policy.local-dev.v1",
+  verificationContractRef: "verification.m2.v1",
+  targetWorkspaceRef: "workspace://local-dev",
+  now: () => new Date("2026-02-22T12:01:00Z"),
+  toolVersion: "l-semantica@0.1.0-dev"
+});
+```
