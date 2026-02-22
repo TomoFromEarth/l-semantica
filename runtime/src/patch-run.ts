@@ -155,6 +155,14 @@ interface VerificationEvaluation {
   failingChecks: string[];
 }
 
+function compareStableStrings(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+
+  return left < right ? -1 : 1;
+}
+
 function normalizeOptionalNonEmptyString(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -204,7 +212,7 @@ function normalizeRequiredChecks(value: unknown): string[] {
     );
   }
 
-  return [...normalized].sort((left, right) => left.localeCompare(right));
+  return [...normalized].sort(compareStableStrings);
 }
 
 function normalizePatchRunCheckStatus(value: unknown): PatchRunCheckStatus {
@@ -272,7 +280,7 @@ function normalizeVerificationResults(value: unknown): PatchRunVerificationResul
     };
   });
 
-  return results.sort((left, right) => left.check.localeCompare(right.check));
+  return results.sort((left, right) => compareStableStrings(left.check, right.check));
 }
 
 function normalizePolicySensitivePathPatterns(value: unknown): string[] {
@@ -301,7 +309,7 @@ function normalizePolicySensitivePathPatterns(value: unknown): string[] {
         return normalized.replace(/\\/g, "/");
       })
     )
-  ).sort((left, right) => left.localeCompare(right));
+  ).sort(compareStableStrings);
 }
 
 function normalizePatchPath(value: unknown, context: string): string {
@@ -362,10 +370,18 @@ function normalizeSafeDiffPlanEdit(value: unknown, index: number): NormalizedSaf
   }
 
   const targetId = normalizeOptionalNonEmptyString(edit.target_id);
-  const symbolPath =
-    edit.symbol_path === null
-      ? null
-      : normalizeOptionalNonEmptyString(edit.symbol_path);
+  let symbolPath: string | null | undefined;
+  if (edit.symbol_path === null) {
+    symbolPath = null;
+  } else if (edit.symbol_path !== undefined) {
+    symbolPath = normalizeOptionalNonEmptyString(edit.symbol_path);
+    if (!symbolPath) {
+      throw new PatchRunError(
+        `Patch run safe diff plan payload.edits[${String(index)}].symbol_path must be null or a non-empty string`,
+        "INVALID_SAFE_DIFF_PLAN"
+      );
+    }
+  }
 
   return {
     path,
@@ -580,8 +596,8 @@ function evaluateVerification(
     evidenceComplete,
     allRequiredPassed,
     missingRequiredChecks,
-    incompleteChecks: [...incompleteChecks].sort((left, right) => left.localeCompare(right)),
-    failingChecks: [...failingChecks].sort((left, right) => left.localeCompare(right))
+    incompleteChecks: [...incompleteChecks].sort(compareStableStrings),
+    failingChecks: [...failingChecks].sort(compareStableStrings)
   };
 }
 
@@ -636,7 +652,7 @@ function collectPolicySensitivePaths(
     }
   }
 
-  return [...matches].sort((left, right) => left.localeCompare(right));
+  return [...matches].sort(compareStableStrings);
 }
 
 function createRunIdFallback(): string {

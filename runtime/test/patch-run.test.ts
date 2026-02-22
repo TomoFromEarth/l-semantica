@@ -353,3 +353,33 @@ test("createPatchRunArtifact validates safe diff plan input artifact shape", () 
       error.code === "INVALID_SAFE_DIFF_PLAN"
   );
 });
+
+test("createPatchRunArtifact rejects empty-string symbol_path in safe diff plan edits", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    const safeDiffPlan = createSafeDiffPlan(
+      repo.root,
+      "Update capability read_docs description to mention local RFCs"
+    );
+    const malformed = JSON.parse(JSON.stringify(safeDiffPlan)) as typeof safeDiffPlan;
+    if (!malformed.payload.edits[0]) {
+      assert.fail("expected at least one planned edit");
+    }
+    malformed.payload.edits[0].symbol_path = "" as never;
+
+    assert.throws(
+      () =>
+        createPatchRunArtifact({
+          safeDiffPlan: malformed
+        }),
+      (error: unknown) =>
+        error instanceof PatchRunError &&
+        error.code === "INVALID_SAFE_DIFF_PLAN" &&
+        error.message ===
+          "Patch run safe diff plan payload.edits[0].symbol_path must be null or a non-empty string"
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
