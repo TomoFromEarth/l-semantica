@@ -165,7 +165,8 @@ The following examples are canonical shape examples for M2 implementation work. 
     ],
     "alternatives": [],
     "decision": "continue",
-    "reason_code": "ok"
+    "reason_code": "ok",
+    "reason_detail": "Single high-confidence target selected"
   }
 }
 ```
@@ -209,7 +210,8 @@ The following examples are canonical shape examples for M2 implementation work. 
       }
     },
     "decision": "continue",
-    "reason_code": "ok"
+    "reason_code": "ok",
+    "reason_detail": "Plan is within conservative safety bounds"
   }
 }
 ```
@@ -245,7 +247,8 @@ The following examples are canonical shape examples for M2 implementation work. 
       "evidence_complete": true
     },
     "decision": "continue",
-    "reason_code": "ok"
+    "reason_code": "ok",
+    "reason_detail": "All required checks passed with complete evidence"
   }
 }
 ```
@@ -297,7 +300,13 @@ The following examples are canonical shape examples for M2 implementation work. 
   "run_id": "run_m2_bench_20260222_0001",
   "produced_at_utc": "2026-02-22T12:30:00Z",
   "tool_version": "l-semantica@0.1.0-dev",
-  "inputs": [],
+  "inputs": [
+    {
+      "artifact_id": "prb_01",
+      "artifact_type": "ls.m2.pr_bundle",
+      "schema_version": "1.0.0"
+    }
+  ],
   "trace": {
     "suite_id": "legacy-continuation.v1"
   },
@@ -397,6 +406,7 @@ Required benchmark report behavior (`#55`):
 2. Report aggregate `median_efficiency_ratio` and `p90_efficiency_ratio`.
 3. Report per-task and aggregate quality-floor status with machine-readable invalid-gain reasons.
 4. Mark a task gain invalid when efficiency improves but quality-floor checks fail.
+5. As a downstream artifact, include decision-relevant benchmarked artifact references in `inputs` (for example `pr_bundle` and/or `patch_run` refs).
 
 Minimum quality-floor requirements for a valid task gain:
 1. Required tests/checks pass for the task scenario.
