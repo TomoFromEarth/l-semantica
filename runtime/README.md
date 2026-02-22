@@ -132,3 +132,44 @@ const intentMapping = createIntentMappingArtifact({
   toolVersion: "l-semantica@0.1.0-dev"
 });
 ```
+
+## Safe Diff Plan (M2 `#52`)
+- `createSafeDiffPlanArtifact({ intentMapping, ...options })` consumes `ls.m2.intent_mapping@1.0.0` and emits `ls.m2.safe_diff_plan@1.0.0`.
+- The planner reuses the upstream intent-mapping `run_id` by default and records the mapping envelope in `inputs`.
+- Output `payload.edits[]` is a bounded, human-inspectable plan (path, operation, justification) for downstream patch generation.
+- `payload.safety_checks` records effective forbidden-path patterns and observed vs limit counts for file changes and hunks.
+- Guardrail outcomes are reason-coded using RFC-002 decision semantics (`continue`, `escalate`, `stop`):
+  - `decision=continue` + `reason_code=ok` when the plan stays within conservative bounds.
+  - `decision=escalate` + `reason_code=change_bound_exceeded` or `conflict_detected` when human review is required.
+  - `decision=stop` + `reason_code=forbidden_path` or upstream `unsupported_input` when planning is hard-blocked.
+- Upstream intent-mapping blocks (`mapping_ambiguous`, `mapping_low_confidence`) are propagated without generating edits.
+- The `#52` issue text mentions `proceed`; runtime follows RFC-002’s normative `continue` keyword for cross-stage consistency.
+- Deterministic tests/replays can provide `options.now`; safety limits are configurable via `maxFileChanges`, `maxHunks`, and `forbiddenPathPatterns`.
+
+Example:
+
+```ts
+import {
+  createIntentMappingArtifact,
+  createSafeDiffPlanArtifact,
+  createWorkspaceSnapshotArtifact
+} from "@l-semantica/runtime";
+
+const snapshot = createWorkspaceSnapshotArtifact({
+  workspaceRoot: process.cwd(),
+  runIdFactory: () => "run_m2_20260222_0001",
+  now: () => new Date("2026-02-22T12:00:00Z")
+});
+
+const intentMapping = createIntentMappingArtifact({
+  workspaceSnapshot: snapshot,
+  intent: "Update capability read_docs description to mention local RFCs",
+  now: () => new Date("2026-02-22T12:00:05Z")
+});
+
+const safeDiffPlan = createSafeDiffPlanArtifact({
+  intentMapping,
+  now: () => new Date("2026-02-22T12:00:10Z"),
+  toolVersion: "l-semantica@0.1.0-dev"
+});
+```

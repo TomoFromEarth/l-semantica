@@ -667,6 +667,30 @@ export {
 } from "./feedback-tensor.ts";
 
 export {
+  DEFAULT_SAFE_DIFF_PLAN_FORBIDDEN_PATH_PATTERNS,
+  DEFAULT_SAFE_DIFF_PLAN_MAX_FILE_CHANGES,
+  DEFAULT_SAFE_DIFF_PLAN_MAX_HUNKS,
+  DEFAULT_SAFE_DIFF_PLAN_PLANNER_PROFILE,
+  DEFAULT_SAFE_DIFF_PLAN_TOOL_VERSION,
+  SAFE_DIFF_PLAN_ARTIFACT_TYPE,
+  SAFE_DIFF_PLAN_DECISIONS,
+  SAFE_DIFF_PLAN_EDIT_OPERATIONS,
+  SAFE_DIFF_PLAN_REASON_CODES,
+  SAFE_DIFF_PLAN_SCHEMA_VERSION,
+  SafeDiffPlanError,
+  createSafeDiffPlanArtifact,
+  type CreateSafeDiffPlanArtifactOptions,
+  type SafeDiffPlanArtifactInputRef,
+  type SafeDiffPlanArtifactV1,
+  type SafeDiffPlanDecision,
+  type SafeDiffPlanDraftEdit,
+  type SafeDiffPlanEdit,
+  type SafeDiffPlanEditOperation,
+  type SafeDiffPlanErrorCode,
+  type SafeDiffPlanReasonCode
+} from "./safe-diff-plan.ts";
+
+export {
   DEFAULT_INTENT_MAPPING_AMBIGUITY_GAP,
   DEFAULT_INTENT_MAPPING_INTENT_SOURCE,
   DEFAULT_INTENT_MAPPING_MAX_ALTERNATIVES,
