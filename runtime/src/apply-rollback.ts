@@ -396,6 +396,22 @@ function requireStringValue(
   return value;
 }
 
+function decodeBase64Content(
+  value: string,
+  context: string,
+  errorCode: ApplyRollbackErrorCode
+): Buffer {
+  const decoded = Buffer.from(value, "base64");
+  if (decoded.toString("base64") !== value) {
+    throw new ApplyRollbackError(
+      `${context} must be canonical base64-encoded content`,
+      errorCode
+    );
+  }
+
+  return decoded;
+}
+
 function normalizeArtifactInputRef(
   value: unknown,
   context: string,
@@ -1108,14 +1124,41 @@ function normalizeSnapshotFileEntries(
       }
     }
 
-    const normalizedSha = contentSha === null ? null : normalizeDigest(contentSha, `${context}[${String(index)}].content_sha256`, errorCode);
-    const normalizedBase64 = contentBase64 === null ? null : normalizeDigest(contentBase64, `${context}[${String(index)}].content_base64`, errorCode);
+    const normalizedSha =
+      contentSha === null
+        ? null
+        : normalizeDigest(contentSha, `${context}[${String(index)}].content_sha256`, errorCode);
+    const normalizedBase64 =
+      contentBase64 === null
+        ? null
+        : requireStringValue(contentBase64, `${context}[${String(index)}].content_base64`, errorCode);
 
     if (exists && (!normalizedSha || normalizedBase64 === null)) {
       throw new ApplyRollbackError(
         `${context}[${String(index)}] must include content_sha256 and content_base64 when exists=true`,
         errorCode
       );
+    }
+
+    if (exists && normalizedSha && normalizedBase64 !== null) {
+      const decoded = decodeBase64Content(
+        normalizedBase64,
+        `${context}[${String(index)}].content_base64`,
+        errorCode
+      );
+      if (decoded.byteLength !== (byteLengthValue as number)) {
+        throw new ApplyRollbackError(
+          `${context}[${String(index)}].content_base64 decoded byte length does not match byte_length`,
+          errorCode
+        );
+      }
+
+      if (buildSha256Prefixed(decoded) !== normalizedSha) {
+        throw new ApplyRollbackError(
+          `${context}[${String(index)}].content_base64 decoded content does not match content_sha256`,
+          errorCode
+        );
+      }
     }
 
     entries.push({
@@ -1544,8 +1587,14 @@ function globPatternToRegex(pattern: string): RegExp {
     if (character === "*") {
       const next = pattern[index + 1];
       if (next === "*") {
-        expression += ".*";
-        index += 1;
+        const afterGlobStar = pattern[index + 2];
+        if (afterGlobStar === "/") {
+          expression += "(?:.*/)?";
+          index += 2;
+        } else {
+          expression += ".*";
+          index += 1;
+        }
       } else {
         expression += "[^/]*";
       }
@@ -1742,8 +1791,26 @@ function restoreWorkspaceStateSnapshot(workspaceRoot: string, snapshot: ApplyRol
       );
     }
 
+    const decoded = decodeBase64Content(
+      file.content_base64,
+      `rollback snapshot ${file.path}.content_base64`,
+      "INVALID_PREVIOUS_RECORD"
+    );
+    if (decoded.byteLength !== file.byte_length) {
+      throw new ApplyRollbackError(
+        `Rollback snapshot ${file.path} byte_length does not match decoded content`,
+        "INVALID_PREVIOUS_RECORD"
+      );
+    }
+    if (buildSha256Prefixed(decoded) !== file.content_sha256) {
+      throw new ApplyRollbackError(
+        `Rollback snapshot ${file.path} content_sha256 does not match decoded content`,
+        "INVALID_PREVIOUS_RECORD"
+      );
+    }
+
     ensureParentDirectory(absolutePath);
-    writeFileSync(absolutePath, Buffer.from(file.content_base64, "base64"));
+    writeFileSync(absolutePath, decoded);
   }
 }
 

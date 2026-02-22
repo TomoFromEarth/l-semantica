@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -43,6 +44,34 @@ function writeRepoFile(repoRoot: string, relativePath: string, contents: string)
 
 function readRepoFile(repoRoot: string, relativePath: string): string {
   return readFileSync(join(repoRoot, relativePath), "utf8");
+}
+
+function sha256Prefixed(value: string | Buffer): string {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function rebuildSnapshotDigest(snapshot: {
+  files: Array<{
+    path: string;
+    exists: boolean;
+    byte_length: number;
+    content_sha256: string | null;
+  }>;
+}): string {
+  return sha256Prefixed(
+    JSON.stringify(
+      snapshot.files.map((entry) => ({
+        path: entry.path,
+        exists: entry.exists,
+        byte_length: entry.byte_length,
+        content_sha256: entry.content_sha256
+      }))
+    )
+  );
 }
 
 function createFixtureRepo(): { root: string; cleanup: () => void } {
@@ -398,6 +427,129 @@ test("createApplyRollbackRecordArtifact stops apply when benchmark evidence mark
     assert.equal(artifact.payload.execution.executed, false);
     assert.equal(artifact.payload.traceability.benchmark_gate?.enforced, true);
     assert.equal(readRepoFile(repo.root, "flows/repo-maintenance.ls"), baselineFlow);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("createApplyRollbackRecordArtifact blocks root-level sensitive paths for **/id_rsa patterns", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    const upstream = createPrBundleChain(repo.root);
+    const tamperedPrBundle = cloneJson(upstream.prBundle);
+    tamperedPrBundle.payload.traceability.diff_plan_edits[0].path = "id_rsa";
+
+    const artifact = createApplyRollbackRecordArtifact({
+      action: "apply",
+      prBundle: tamperedPrBundle,
+      workspaceRoot: repo.root,
+      execute: false,
+      declaredCapabilities: ["workspace.apply_patch"],
+      approvalEvidenceRef: "approval://ticket/123",
+      blockedPathPatterns: ["**/id_rsa"],
+      escalationPathPatterns: [],
+      policyProfileRef: "policy.local-dev.v1",
+      verificationContractRef: "verification.m2.v1",
+      targetWorkspaceRef: "workspace://fixture",
+      now: () => new Date("2026-02-22T18:05:30.000Z"),
+      toolVersion: "l-semantica@0.1.0-dev"
+    });
+
+    assert.equal(artifact.payload.decision, "stop");
+    assert.equal(artifact.payload.reason_code, "policy_blocked");
+    assert.deepEqual(artifact.payload.policy.blocked_paths, ["id_rsa"]);
+    assert.equal(artifact.payload.execution.executed, false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("createApplyRollbackRecordArtifact accepts zero-byte prior snapshots and restores empty files on rollback", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    const upstream = createPrBundleChain(repo.root);
+    const applyRecord = createApplyRecord(repo.root, upstream.prBundle, {
+      benchmarkReport: createPassingBenchmarkReport(),
+      requireBenchmarkValidGain: true,
+      now: () => new Date("2026-02-22T18:05:40.000Z")
+    });
+    assert.equal(applyRecord.payload.decision, "continue");
+
+    const zeroBytePreviousRecord = cloneJson(applyRecord);
+    const stateBefore = zeroBytePreviousRecord.payload.execution.state_before;
+    const targetFile = stateBefore.files[0];
+    assert.equal(targetFile.path, "flows/repo-maintenance.ls");
+    targetFile.byte_length = 0;
+    targetFile.content_base64 = "";
+    targetFile.content_sha256 = sha256Prefixed(Buffer.alloc(0));
+    stateBefore.digest = rebuildSnapshotDigest(stateBefore);
+
+    const rollbackRecord = createApplyRollbackRecordArtifact({
+      action: "rollback",
+      prBundle: upstream.prBundle,
+      previousApplyRecord: zeroBytePreviousRecord,
+      workspaceRoot: repo.root,
+      execute: true,
+      declaredCapabilities: ["workspace.rollback_patch"],
+      policyProfileRef: "policy.local-dev.v1",
+      verificationContractRef: "verification.m2.v1",
+      targetWorkspaceRef: "workspace://fixture",
+      now: () => new Date("2026-02-22T18:05:50.000Z"),
+      toolVersion: "l-semantica@0.1.0-dev"
+    });
+
+    assert.equal(rollbackRecord.payload.decision, "continue");
+    assert.equal(rollbackRecord.payload.rollback.restored_to_prior_state, true);
+    assert.equal(readRepoFile(repo.root, "flows/repo-maintenance.ls"), "");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("createApplyRollbackRecordArtifact rejects corrupted prior snapshot content before rollback writes", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    const upstream = createPrBundleChain(repo.root);
+    const applyRecord = createApplyRecord(repo.root, upstream.prBundle, {
+      benchmarkReport: createPassingBenchmarkReport(),
+      requireBenchmarkValidGain: true,
+      now: () => new Date("2026-02-22T18:05:55.000Z")
+    });
+    const appliedFlow = readRepoFile(repo.root, "flows/repo-maintenance.ls");
+
+    const corruptedPreviousRecord = cloneJson(applyRecord);
+    corruptedPreviousRecord.payload.execution.state_before.files[0].content_base64 = Buffer.from(
+      "tampered-content\n",
+      "utf8"
+    ).toString("base64");
+    // Keep byte_length/content_sha256 and snapshot digest unchanged so validation must inspect decoded content.
+
+    assert.throws(
+      () =>
+        createApplyRollbackRecordArtifact({
+          action: "rollback",
+          prBundle: upstream.prBundle,
+          previousApplyRecord: corruptedPreviousRecord,
+          workspaceRoot: repo.root,
+          execute: true,
+          declaredCapabilities: ["workspace.rollback_patch"],
+          policyProfileRef: "policy.local-dev.v1",
+          verificationContractRef: "verification.m2.v1",
+          targetWorkspaceRef: "workspace://fixture",
+          now: () => new Date("2026-02-22T18:06:05.000Z"),
+          toolVersion: "l-semantica@0.1.0-dev"
+        }),
+      (error) => {
+        assert.equal(error instanceof ApplyRollbackError, true);
+        assert.equal((error as ApplyRollbackError).code, "INVALID_PREVIOUS_RECORD");
+        return true;
+      }
+    );
+
+    assert.equal(readRepoFile(repo.root, "flows/repo-maintenance.ls"), appliedFlow);
   } finally {
     repo.cleanup();
   }
