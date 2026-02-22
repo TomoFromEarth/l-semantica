@@ -3,6 +3,7 @@ import { posix } from "node:path";
 
 import {
   INTENT_MAPPING_ARTIFACT_TYPE,
+  INTENT_MAPPING_REASON_CODES,
   INTENT_MAPPING_SCHEMA_VERSION,
   type IntentMappingArtifactV1
 } from "./intent-mapping.ts";
@@ -36,6 +37,7 @@ export const SAFE_DIFF_PLAN_REASON_CODES = [
 export const SAFE_DIFF_PLAN_EDIT_OPERATIONS = ["create", "modify", "delete"] as const;
 
 const PATH_GLOB_REGEX_CACHE = new Map<string, RegExp>();
+const INTENT_MAPPING_REASON_CODE_SET = new Set<string>(INTENT_MAPPING_REASON_CODES);
 
 export type SafeDiffPlanDecision = (typeof SAFE_DIFF_PLAN_DECISIONS)[number];
 export type SafeDiffPlanReasonCode = (typeof SAFE_DIFF_PLAN_REASON_CODES)[number];
@@ -401,6 +403,13 @@ function normalizeIntentMappingArtifact(input: unknown): NormalizedIntentMapping
     );
   }
 
+  if (!INTENT_MAPPING_REASON_CODE_SET.has(reasonCode)) {
+    throw new SafeDiffPlanError(
+      "Safe diff plan intent mapping payload.reason_code is unsupported for the pinned schema version",
+      "INVALID_INTENT_MAPPING"
+    );
+  }
+
   if (!Array.isArray(payload?.candidates)) {
     throw new SafeDiffPlanError(
       "Safe diff plan intent mapping payload.candidates must be an array",
@@ -446,7 +455,10 @@ function inferEditOperation(intentSummary: string): SafeDiffPlanEditOperation {
     return "create";
   }
 
-  if (/\badd\b/.test(normalizedIntent) && /\bfile|section|entry|field|rule|check|capability|goal\b/.test(normalizedIntent)) {
+  if (
+    /\badd\b/.test(normalizedIntent) &&
+    /\b(?:file|section|entry|field|rule|check|capability|goal)\b/.test(normalizedIntent)
+  ) {
     return "create";
   }
 
@@ -579,7 +591,10 @@ function collectForbiddenPaths(edits: SafeDiffPlanEdit[], forbiddenPatterns: str
     }
 
     for (const pattern of forbiddenPatterns) {
-      if (globPatternToRegex(pattern).test(edit.path)) {
+      if (
+        globPatternToRegex(pattern).test(edit.path) ||
+        (pattern.endsWith("/**") && edit.path === pattern.slice(0, -3))
+      ) {
         blocked.add(edit.path);
         break;
       }

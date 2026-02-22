@@ -224,6 +224,30 @@ test("createSafeDiffPlanArtifact stops forbidden-path edits with reason-coded ou
   }
 });
 
+test("createSafeDiffPlanArtifact blocks bare forbidden directory paths covered by /** patterns", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    const intentMapping = createIntentMapping(
+      repo.root,
+      "Update capability read_docs description to mention local RFCs"
+    );
+
+    const artifact = createSafeDiffPlanArtifact({
+      intentMapping,
+      plannedEdits: [{ path: ".git", operation: "modify", justification: "unsafe dir edit" }],
+      now: () => new Date("2026-02-22T14:00:13.500Z"),
+      toolVersion: "l-semantica@0.1.0-dev"
+    });
+
+    assert.equal(artifact.payload.decision, "stop");
+    assert.equal(artifact.payload.reason_code, "forbidden_path");
+    assert.equal(artifact.payload.reason_detail.includes(".git"), true);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test("createSafeDiffPlanArtifact escalates when conservative file or hunk bounds are exceeded", () => {
   const repo = createFixtureRepo();
 
@@ -256,6 +280,28 @@ test("createSafeDiffPlanArtifact escalates when conservative file or hunk bounds
   }
 });
 
+test("createSafeDiffPlanArtifact does not misclassify substring matches as section/file creates", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    const intentMapping = createIntentMapping(repo.root, "Add intersection note to README", {
+      minConfidence: 0
+    });
+
+    const artifact = createSafeDiffPlanArtifact({
+      intentMapping,
+      now: () => new Date("2026-02-22T14:00:14.500Z"),
+      toolVersion: "l-semantica@0.1.0-dev"
+    });
+
+    assert.equal(artifact.payload.decision, "continue");
+    assert.equal(artifact.payload.edits.length, 1);
+    assert.equal(artifact.payload.edits[0]?.operation, "modify");
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test("createSafeDiffPlanArtifact escalates conflicting edits that target the same path", () => {
   const repo = createFixtureRepo();
 
@@ -277,6 +323,33 @@ test("createSafeDiffPlanArtifact escalates conflicting edits that target the sam
     assert.equal(artifact.payload.decision, "escalate");
     assert.equal(artifact.payload.reason_code, "conflict_detected");
     assert.equal(artifact.payload.reason_detail.includes("README.md"), true);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("createSafeDiffPlanArtifact rejects unsupported upstream intent mapping reason codes", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    const intentMapping = createIntentMapping(
+      repo.root,
+      "Update capability read_docs description to mention local RFCs"
+    );
+    const malformed = JSON.parse(JSON.stringify(intentMapping)) as typeof intentMapping;
+    malformed.payload.reason_code = "not_a_real_reason_code" as typeof malformed.payload.reason_code;
+
+    assert.throws(
+      () =>
+        createSafeDiffPlanArtifact({
+          intentMapping: malformed
+        }),
+      (error: unknown) =>
+        error instanceof SafeDiffPlanError &&
+        error.code === "INVALID_INTENT_MAPPING" &&
+        error.message ===
+          "Safe diff plan intent mapping payload.reason_code is unsupported for the pinned schema version"
+    );
   } finally {
     repo.cleanup();
   }
