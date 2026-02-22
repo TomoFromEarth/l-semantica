@@ -753,7 +753,7 @@ function normalizeIntentMappingTarget(value: unknown, context: string): PrBundle
 
   let symbolPath: string | null = null;
   if (target.symbol_path === null || target.symbol_path === undefined) {
-    symbolPath = target.symbol_path === null ? null : null;
+    symbolPath = null;
   } else {
     const normalizedSymbolPath = normalizeOptionalNonEmptyString(target.symbol_path);
     if (!normalizedSymbolPath) {
