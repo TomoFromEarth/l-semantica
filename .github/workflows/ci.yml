@@ -72,3 +72,6 @@ jobs:
 
       - name: Reliability benchmark gates
         run: pnpm bench:reliability -- --enforce-thresholds
+
+      - name: Legacy continuation benchmark gates
+        run: pnpm bench:run -- --enforce-thresholds

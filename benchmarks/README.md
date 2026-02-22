@@ -2,7 +2,7 @@
 
 Token-efficiency, reliability, and parity benchmark suites.
 
-## M0 Harness Stub (`#13`)
+## M2 Legacy Continuation Benchmark Report and Gates (`#55`)
 
 Run from repository root:
 
@@ -10,31 +10,85 @@ Run from repository root:
 pnpm bench:run
 ```
 
+Threshold-enforced run (used for M2 objective gating / CI):
+
+```bash
+pnpm bench:run -- --enforce-thresholds
+```
+
 Optional flags:
 
 ```bash
-node benchmarks/run-harness.mjs --config benchmarks/tasks.json --out benchmarks/reports/token-efficiency-report.json
+node benchmarks/run-harness.mjs \
+  --config benchmarks/tasks.json \
+  --thresholds benchmarks/legacy-benchmark-gates-thresholds.v1.json \
+  --out benchmarks/reports/legacy-benchmark-report.json \
+  --enforce-thresholds
 ```
 
 Flag path behavior:
-- explicit `--config` and `--out` values are resolved from the current working directory.
+- explicit `--config`, `--thresholds`, and `--out` values are resolved from the current working directory.
 - when omitted, defaults are resolved from the harness directory (`benchmarks/`).
 
 Defaults:
 - task list: `benchmarks/tasks.json`
-- report output path: `benchmarks/reports/token-efficiency-report.json`
+- threshold config: `benchmarks/legacy-benchmark-gates-thresholds.v1.json`
+- report output path: `benchmarks/reports/legacy-benchmark-report.json`
 
-Report fields:
-- `baseline_tokens`
-- `ls_tokens`
-- `efficiency_ratio`
+Task config (`benchmarks/tasks.json`) fields:
+- `schema_version` (`1.0.0`)
+- `suite_id`
+- `tasks[]`
+- `tasks[].id`, `tasks[].name`
+- `tasks[].baseline_fixture`, `tasks[].ls_fixture`
+- `tasks[].inputs[]` (`artifact_id`, `artifact_type`, `schema_version`)
+- `tasks[].quality_floor.required_checks.{required,completed,failed}`
+- `tasks[].quality_floor.policy_compliant`
+- `tasks[].quality_floor.acceptance_criteria_met`
+- `tasks[].quality_floor.traceability_complete`
+- `tasks[].quality_floor.unsupported_bypass`
+- `tasks[].quality_floor.artifact_contract_valid`
 
-Formula:
-- `efficiency_ratio = baseline_tokens / ls_tokens`
+Threshold config (`benchmarks/legacy-benchmark-gates-thresholds.v1.json`) fields:
+- `schema_version`
+- `threshold_id`
+- `artifact_schema_version`
+- `metrics.median_efficiency_ratio_min`
+- `requirements.quality_floor_preserved`
+- `requirements.valid_gain`
+
+Report artifact envelope fields:
+- `artifact_type` (`ls.m2.legacy_benchmark_report`)
+- `schema_version` (`1.0.0`)
+- `artifact_id`
+- `run_id`
+- `produced_at_utc` (deterministic for reproducible diffs)
+- `tool_version`
+- `inputs[]`
+- `trace.suite_id`
+- `trace.threshold_id`
+
+Report payload fields:
+- `formula`
+- `tasks[]` (per-task `efficiency_ratio`, token counts, `quality_floor.status`, `quality_floor.invalid_gain_reasons`)
+- `aggregates.median_efficiency_ratio`
+- `aggregates.p90_efficiency_ratio` (nearest-rank p90)
+- `quality_floor_summary.status`
+- `quality_floor_summary.invalid_gain_reasons`
+- `m2_objective_evaluation.{efficiency_target_met,quality_floor_preserved,valid_gain}`
+- `m2_objective_evaluation.failed_metrics`
+
+Gate behavior:
+- per-task `efficiency_ratio = baseline_tokens / ls_tokens`
+- report marks invalid gains with machine-readable `invalid_gain_reasons`
+- aggregate M2 gate requires `median_efficiency_ratio >= 5.0` and preserved quality floor (`valid_gain = true`)
+- `--enforce-thresholds` writes the report and exits non-zero when the gate fails
 
 Included fixtures:
-- baseline prompt: `benchmarks/fixtures/baseline/grounded-response-minimal.txt`
-- `.ls` fixture: `benchmarks/fixtures/ls/grounded-response-minimal.ls`
+- `benchmarks/fixtures/baseline/legacy-runtime-pr-bundle-hardening.txt`
+- `benchmarks/fixtures/baseline/legacy-benchmark-gate-quality-floor-enforcement.txt`
+- `benchmarks/fixtures/baseline/legacy-ci-benchmark-wiring-minimal-scope.txt`
+- matching `.ls` fixtures under `benchmarks/fixtures/ls/`
 
 ## M1 Reliability Fixture Corpus (`#27`)
 

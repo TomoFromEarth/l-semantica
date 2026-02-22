@@ -1,11 +1,86 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "1.0.0",
+  "suite_id": "legacy-continuation.v1",
   "tasks": [
     {
-      "id": "grounded-response-minimal",
-      "name": "Grounded response minimal",
-      "baseline_fixture": "benchmarks/fixtures/baseline/grounded-response-minimal.txt",
-      "ls_fixture": "benchmarks/fixtures/ls/grounded-response-minimal.ls"
+      "id": "legacy-runtime-pr-bundle-hardening",
+      "name": "Legacy runtime PR-bundle hardening with regression coverage",
+      "baseline_fixture": "benchmarks/fixtures/baseline/legacy-runtime-pr-bundle-hardening.txt",
+      "ls_fixture": "benchmarks/fixtures/ls/legacy-runtime-pr-bundle-hardening.ls",
+      "inputs": [
+        {
+          "artifact_id": "prb_legacy_runtime_01",
+          "artifact_type": "ls.m2.pr_bundle",
+          "schema_version": "1.0.0"
+        },
+        {
+          "artifact_id": "patch_legacy_runtime_01",
+          "artifact_type": "ls.m2.patch_run",
+          "schema_version": "1.0.0"
+        }
+      ],
+      "quality_floor": {
+        "required_checks": {
+          "required": 4,
+          "completed": 4,
+          "failed": 0
+        },
+        "policy_compliant": true,
+        "acceptance_criteria_met": true,
+        "traceability_complete": true,
+        "unsupported_bypass": false,
+        "artifact_contract_valid": true
+      }
+    },
+    {
+      "id": "legacy-benchmark-gate-quality-floor-enforcement",
+      "name": "Legacy benchmark gate quality-floor enforcement and invalid-gain reporting",
+      "baseline_fixture": "benchmarks/fixtures/baseline/legacy-benchmark-gate-quality-floor-enforcement.txt",
+      "ls_fixture": "benchmarks/fixtures/ls/legacy-benchmark-gate-quality-floor-enforcement.ls",
+      "inputs": [
+        {
+          "artifact_id": "prb_benchmark_gate_01",
+          "artifact_type": "ls.m2.pr_bundle",
+          "schema_version": "1.0.0"
+        }
+      ],
+      "quality_floor": {
+        "required_checks": {
+          "required": 5,
+          "completed": 5,
+          "failed": 0
+        },
+        "policy_compliant": true,
+        "acceptance_criteria_met": true,
+        "traceability_complete": true,
+        "unsupported_bypass": false,
+        "artifact_contract_valid": true
+      }
+    },
+    {
+      "id": "legacy-ci-benchmark-wiring-minimal-scope",
+      "name": "Legacy benchmark CI wiring with minimal scope and deterministic output",
+      "baseline_fixture": "benchmarks/fixtures/baseline/legacy-ci-benchmark-wiring-minimal-scope.txt",
+      "ls_fixture": "benchmarks/fixtures/ls/legacy-ci-benchmark-wiring-minimal-scope.ls",
+      "inputs": [
+        {
+          "artifact_id": "prb_ci_wiring_01",
+          "artifact_type": "ls.m2.pr_bundle",
+          "schema_version": "1.0.0"
+        }
+      ],
+      "quality_floor": {
+        "required_checks": {
+          "required": 4,
+          "completed": 4,
+          "failed": 0
+        },
+        "policy_compliant": true,
+        "acceptance_criteria_met": true,
+        "traceability_complete": true,
+        "unsupported_bypass": false,
+        "artifact_contract_valid": true
+      }
     }
   ]
 }
