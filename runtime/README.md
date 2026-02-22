@@ -173,3 +173,55 @@ const safeDiffPlan = createSafeDiffPlanArtifact({
   toolVersion: "l-semantica@0.1.0-dev"
 });
 ```
+
+## Patch Run (M2 `#53`)
+- `createPatchRunArtifact({ safeDiffPlan, ...options })` consumes `ls.m2.safe_diff_plan@1.0.0` and emits `ls.m2.patch_run@1.0.0`.
+- The patch runner reuses the upstream safe-diff-plan `run_id` by default and records the planner envelope in `inputs`.
+- `payload.patch` contains a deterministic, human-inspectable unified-diff placeholder patch for downstream packaging (`#54`) plus `payload.patch_digest`.
+- `payload.verification` records required checks, normalized results, evidence completeness, and fail-closed gating summaries.
+- Guardrail outcomes use RFC-002 reason-coded decisions (`continue`, `escalate`, `stop`):
+  - `decision=continue` + `reason_code=ok` when all required checks pass with complete evidence.
+  - `decision=stop` + `reason_code=verification_failed` when any required check fails.
+  - `decision=stop` + `reason_code=verification_incomplete` when required checks/results/evidence links are incomplete.
+  - `decision=escalate` + `reason_code=policy_blocked` when changes target policy-sensitive paths (for example CI/workflow or policy/spec schema files).
+- Upstream safe diff plan blocks (`mapping_*`, `forbidden_path`, `change_bound_exceeded`, `conflict_detected`, `unsupported_input`) are propagated without materializing a patch.
+- Deterministic tests/replays can provide `options.now`; callers can override `requiredChecks`, `verificationResults`, and `policySensitivePathPatterns`.
+
+Example:
+
+```ts
+import {
+  createIntentMappingArtifact,
+  createPatchRunArtifact,
+  createSafeDiffPlanArtifact,
+  createWorkspaceSnapshotArtifact
+} from "@l-semantica/runtime";
+
+const snapshot = createWorkspaceSnapshotArtifact({
+  workspaceRoot: process.cwd(),
+  runIdFactory: () => "run_m2_20260222_0001",
+  now: () => new Date("2026-02-22T12:00:00Z")
+});
+
+const intentMapping = createIntentMappingArtifact({
+  workspaceSnapshot: snapshot,
+  intent: "Update capability read_docs description to mention local RFCs",
+  now: () => new Date("2026-02-22T12:00:05Z")
+});
+
+const safeDiffPlan = createSafeDiffPlanArtifact({
+  intentMapping,
+  now: () => new Date("2026-02-22T12:00:10Z")
+});
+
+const patchRun = createPatchRunArtifact({
+  safeDiffPlan,
+  verificationResults: [
+    { check: "lint", status: "pass", evidence_ref: "artifact://lint-log" },
+    { check: "typecheck", status: "pass", evidence_ref: "artifact://typecheck-log" },
+    { check: "test", status: "pass", evidence_ref: "artifact://test-log" }
+  ],
+  now: () => new Date("2026-02-22T12:00:20Z"),
+  toolVersion: "l-semantica@0.1.0-dev"
+});
+```
