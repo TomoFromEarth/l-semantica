@@ -9,7 +9,8 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "bench:run": "node benchmarks/run-harness.mjs",
-    "bench:calibration": "node --experimental-strip-types benchmarks/run-calibration.mjs"
+    "bench:calibration": "node --experimental-strip-types benchmarks/run-calibration.mjs",
+    "bench:reliability": "node --experimental-strip-types benchmarks/run-reliability-gates.mjs"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
