@@ -235,6 +235,10 @@ test("runRuleFirstRepairLoop emits trace inspection with repair outcome and atte
     assert.equal(entry.schema_version, TRACE_INSPECTION_SCHEMA_VERSION);
     assert.equal(entry.run_id, runId);
     assert.equal(entry.invocation.status, "success");
+    if (entry.invocation.status === "success") {
+      assert.equal(entry.invocation.trace_id, `repair-${runId}`);
+      assert.notEqual(entry.invocation.trace_id, runId);
+    }
     assert.notEqual(entry.repair, undefined);
     assert.equal(entry.repair?.decision, "repaired");
     assert.equal(entry.repair?.reason_code, "DETERMINISTIC_TIMEOUT_RECOVERED");
@@ -244,6 +248,7 @@ test("runRuleFirstRepairLoop emits trace inspection with repair outcome and atte
     assert.equal(entry.repair?.history[0].outcome, "retry");
     assert.equal(entry.repair?.history[1].outcome, "repaired");
     assert.equal(entry.trace_ledger.trace_entry_id, runId);
+    assert.equal(entry.trace_ledger.emitted, true);
     assert.equal(entry.feedback_tensor.feedback_id, feedbackId);
     assert.equal(entry.feedback_tensor.trace_entry_id, runId);
     assert.equal(entry.feedback_tensor.failure_signal?.stage, "repair");

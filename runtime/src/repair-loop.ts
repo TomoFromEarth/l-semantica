@@ -518,7 +518,7 @@ function emitRepairTraceInspection(params: {
       params.result.decision === "repaired"
         ? {
             status: "success",
-            trace_id: params.traceEntryId ?? `repair-${params.runId}`
+            trace_id: `repair-${params.runId}`
           }
         : {
             status: "failure",
@@ -547,7 +547,7 @@ function emitRepairTraceInspection(params: {
     },
     trace_ledger: {
       configured: params.traceEntryId !== undefined,
-      emitted: false,
+      emitted: params.traceEntryId !== undefined,
       trace_entry_id: params.traceEntryId
     },
     feedback_tensor: {
