@@ -1,6 +1,6 @@
 # RFC-002: Legacy Continuation Contracts and Safety Boundaries
 
-- Status: Draft
+- Status: Accepted
 - Authors: @TomoFromEarth, Codex
 - Created: 2026-02-22
 - Supersedes: N/A
