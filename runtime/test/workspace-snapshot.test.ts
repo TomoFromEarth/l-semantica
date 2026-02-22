@@ -142,6 +142,35 @@ test("createWorkspaceSnapshotArtifact reports dirty worktree state and filters u
   }
 });
 
+test("createWorkspaceSnapshotArtifact snapshot_hash changes for same-size dirty content edits", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    writeRepoFile(repo.root, "src/index.ts", "export const meaning = 43;\n");
+    const firstDirtySnapshot = createWorkspaceSnapshotArtifact({
+      workspaceRoot: repo.root,
+      runIdFactory: () => "run-wsnap-dirty-hash-001",
+      now: () => new Date("2026-02-22T12:00:03.000Z"),
+      toolVersion: "l-semantica@0.1.0-dev"
+    });
+
+    writeRepoFile(repo.root, "src/index.ts", "export const meaning = 99;\n");
+    const secondDirtySnapshot = createWorkspaceSnapshotArtifact({
+      workspaceRoot: repo.root,
+      runIdFactory: () => "run-wsnap-dirty-hash-002",
+      now: () => new Date("2026-02-22T12:00:04.000Z"),
+      toolVersion: "l-semantica@0.1.0-dev"
+    });
+
+    assert.equal(firstDirtySnapshot.payload.git.is_dirty, true);
+    assert.equal(secondDirtySnapshot.payload.git.is_dirty, true);
+    assert.notEqual(firstDirtySnapshot.payload.snapshot_hash, secondDirtySnapshot.payload.snapshot_hash);
+    assert.notEqual(firstDirtySnapshot.artifact_id, secondDirtySnapshot.artifact_id);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test("createWorkspaceSnapshotArtifact rejects malformed and unreadable workspace inputs", () => {
   assert.throws(
     () =>
@@ -150,6 +179,7 @@ test("createWorkspaceSnapshotArtifact rejects malformed and unreadable workspace
       }),
     (error: unknown) =>
       error instanceof WorkspaceSnapshotError &&
+      error.name === "WorkspaceSnapshotError" &&
       error.code === "INVALID_WORKSPACE_ROOT" &&
       error.message === "Workspace snapshot workspaceRoot must be a non-empty string"
   );

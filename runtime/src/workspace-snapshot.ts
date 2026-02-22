@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { readdirSync, realpathSync, statSync } from "node:fs";
-import { extname, join, resolve } from "node:path";
+import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { extname, join, relative, resolve } from "node:path";
 
 export const WORKSPACE_SNAPSHOT_ARTIFACT_TYPE = "ls.m2.workspace_snapshot";
 export const WORKSPACE_SNAPSHOT_SCHEMA_VERSION = "1.0.0";
@@ -39,7 +39,7 @@ export class WorkspaceSnapshotError extends Error {
 
   constructor(message: string, code: WorkspaceSnapshotErrorCode, workspaceRoot?: string) {
     super(message);
-    this.name = "Error";
+    this.name = "WorkspaceSnapshotError";
     this.code = code;
     this.workspaceRoot = workspaceRoot;
   }
@@ -92,6 +92,7 @@ export interface CreateWorkspaceSnapshotArtifactOptions {
 interface ScannedFileRecord {
   path: string;
   size_bytes: number;
+  content_sha256: string;
   language?: string;
 }
 
@@ -196,6 +197,18 @@ function detectSupportedLanguage(relativePath: string): string | undefined {
   return SUPPORTED_LANGUAGE_BY_EXTENSION[extension];
 }
 
+function hashFileContents(filePath: string, workspaceRoot: string): string {
+  try {
+    return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+  } catch {
+    throw new WorkspaceSnapshotError(
+      "Workspace snapshot encountered an unreadable file entry",
+      "WORKSPACE_ENTRY_UNREADABLE",
+      workspaceRoot
+    );
+  }
+}
+
 function collectWorkspaceInventory(
   workspaceRoot: string,
   ignoredPaths: string[]
@@ -227,9 +240,7 @@ function collectWorkspaceInventory(
 
     for (const entry of entries) {
       const absoluteEntryPath = join(currentDirectory, entry.name);
-      const relativeEntryPath = normalizeRelativePath(
-        absoluteEntryPath.slice(workspaceRoot.length + 1)
-      );
+      const relativeEntryPath = normalizeRelativePath(relative(workspaceRoot, absoluteEntryPath));
 
       if (relativeEntryPath.length === 0 || isIgnoredRelativePath(relativeEntryPath, ignoredPaths)) {
         continue;
@@ -269,6 +280,7 @@ function collectWorkspaceInventory(
       fileRecords.push({
         path: relativeEntryPath,
         size_bytes: sizeBytes,
+        content_sha256: hashFileContents(absoluteEntryPath, workspaceRoot),
         ...(language ? { language } : {})
       });
     }
@@ -460,4 +472,3 @@ export function createWorkspaceSnapshotArtifact(
     }
   };
 }
-
