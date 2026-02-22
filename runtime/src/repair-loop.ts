@@ -5,6 +5,12 @@ import {
   SUPPORTED_SEMANTIC_IR_SCHEMA_VERSION
 } from "./contracts.ts";
 import { createFeedbackTensorEntry, emitFeedbackTensorEntry } from "./feedback-tensor.ts";
+import {
+  TRACE_INSPECTION_SCHEMA_VERSION,
+  emitTraceInspectionEntry,
+  emitTraceInspectionReport,
+  type TraceInspectionEntryV0
+} from "./trace-inspection.ts";
 
 export const REPAIR_FAILURE_CLASSES = [
   "parse",
@@ -48,6 +54,8 @@ export interface RepairLoopInput {
 export interface RunRepairLoopOptions {
   maxAttempts?: number;
   feedbackTensorPath?: string;
+  traceInspectionPath?: string;
+  traceInspectionReportPath?: string;
   runId?: string;
   traceEntryId?: string;
   now?: () => Date;
@@ -386,6 +394,17 @@ function buildRepairFeedbackAction(
   };
 }
 
+interface RepairFeedbackTensorEmissionResult {
+  emitted: boolean;
+  feedbackId: string;
+  traceEntryId?: string;
+  failureSignal: NonNullable<TraceInspectionEntryV0["feedback_tensor"]["failure_signal"]>;
+  confidence: NonNullable<TraceInspectionEntryV0["feedback_tensor"]["confidence"]>;
+  proposedRepairAction: NonNullable<
+    TraceInspectionEntryV0["feedback_tensor"]["proposed_repair_action"]
+  >;
+}
+
 function emitRepairFeedbackTensor(params: {
   input: NormalizedRepairLoopInput;
   result: RepairLoopResult;
@@ -394,11 +413,12 @@ function emitRepairFeedbackTensor(params: {
   now: () => Date;
   feedbackIdFactory: () => string;
   traceEntryId?: string;
-}): void {
+}): RepairFeedbackTensorEmissionResult {
   const confidence = buildRepairFeedbackConfidence(params.result);
   const action = buildRepairFeedbackAction(params.input, params.result);
+  const feedbackId = resolveFeedbackId(params.feedbackIdFactory, params.runId);
   const entry = createFeedbackTensorEntry({
-    feedbackId: resolveFeedbackId(params.feedbackIdFactory, params.runId),
+    feedbackId,
     generatedAt: resolveTimestamp(params.now),
     failureSignal: {
       class: params.result.classification,
@@ -427,7 +447,132 @@ function emitRepairFeedbackTensor(params: {
 
   try {
     emitFeedbackTensorEntry(entry, { outputPath: params.feedbackTensorPath });
+    return {
+      emitted: true,
+      feedbackId,
+      traceEntryId: entry.provenance.trace_entry_id,
+      failureSignal: {
+        class: entry.failure_signal.class,
+        stage: entry.failure_signal.stage,
+        continuation_allowed: entry.failure_signal.continuation_allowed,
+        error_code: entry.failure_signal.error_code
+      },
+      confidence: {
+        score: entry.confidence.score,
+        rationale: entry.confidence.rationale,
+        calibration_band: entry.confidence.calibration_band
+      },
+      proposedRepairAction: {
+        action: entry.proposed_repair_action.action,
+        requires_human_approval: entry.proposed_repair_action.requires_human_approval,
+        target: entry.proposed_repair_action.target
+      }
+    };
   } catch {}
+
+  return {
+    emitted: false,
+    feedbackId,
+    traceEntryId: entry.provenance.trace_entry_id,
+    failureSignal: {
+      class: entry.failure_signal.class,
+      stage: entry.failure_signal.stage,
+      continuation_allowed: entry.failure_signal.continuation_allowed,
+      error_code: entry.failure_signal.error_code
+    },
+    confidence: {
+      score: entry.confidence.score,
+      rationale: entry.confidence.rationale,
+      calibration_band: entry.confidence.calibration_band
+    },
+    proposedRepairAction: {
+      action: entry.proposed_repair_action.action,
+      requires_human_approval: entry.proposed_repair_action.requires_human_approval,
+      target: entry.proposed_repair_action.target
+    }
+  };
+}
+
+function emitRepairTraceInspection(params: {
+  runId: string;
+  traceEntryId?: string;
+  startedAt: string;
+  completedAt: string;
+  feedbackTensorPath?: string;
+  feedbackTensorEmission?: RepairFeedbackTensorEmissionResult;
+  traceInspectionPath?: string;
+  traceInspectionReportPath?: string;
+  result: RepairLoopResult;
+}): void {
+  if (!params.traceInspectionPath && !params.traceInspectionReportPath) {
+    return;
+  }
+
+  const entry: TraceInspectionEntryV0 = {
+    schema_version: TRACE_INSPECTION_SCHEMA_VERSION,
+    run_id: params.runId,
+    started_at: params.startedAt,
+    completed_at: params.completedAt,
+    generated_at: params.completedAt,
+    invocation:
+      params.result.decision === "repaired"
+        ? {
+            status: "success",
+            trace_id: params.traceEntryId ?? `repair-${params.runId}`
+          }
+        : {
+            status: "failure",
+            failure_code: params.result.reasonCode,
+            error: {
+              name: "RepairLoopDecisionError",
+              message: params.result.detail
+            }
+          },
+    repair: {
+      decision: params.result.decision,
+      continuation_allowed: params.result.continuationAllowed,
+      reason_code: params.result.reasonCode,
+      detail: params.result.detail,
+      attempts: params.result.attempts,
+      max_attempts: params.result.maxAttempts,
+      applied_rule_id: params.result.appliedRuleId,
+      repaired_excerpt: params.result.repairedExcerpt,
+      history: params.result.history.map((record) => ({
+        attempt: record.attempt,
+        rule_id: record.ruleId,
+        outcome: record.outcome,
+        reason_code: record.reasonCode,
+        detail: record.detail
+      }))
+    },
+    trace_ledger: {
+      configured: params.traceEntryId !== undefined,
+      emitted: false,
+      trace_entry_id: params.traceEntryId
+    },
+    feedback_tensor: {
+      configured: params.feedbackTensorPath !== undefined,
+      emitted: params.feedbackTensorEmission?.emitted ?? false,
+      output_path: params.feedbackTensorPath,
+      feedback_id: params.feedbackTensorEmission?.feedbackId,
+      trace_entry_id: params.feedbackTensorEmission?.traceEntryId ?? params.traceEntryId,
+      failure_signal: params.feedbackTensorEmission?.failureSignal,
+      confidence: params.feedbackTensorEmission?.confidence,
+      proposed_repair_action: params.feedbackTensorEmission?.proposedRepairAction
+    }
+  };
+
+  if (params.traceInspectionPath) {
+    try {
+      emitTraceInspectionEntry(entry, { outputPath: params.traceInspectionPath });
+    } catch {}
+  }
+
+  if (params.traceInspectionReportPath) {
+    try {
+      emitTraceInspectionReport(entry, { outputPath: params.traceInspectionReportPath });
+    } catch {}
+  }
 }
 
 function getSchemaVersionFromExcerpt(excerpt: string): string | undefined {
@@ -795,23 +940,32 @@ export function runRuleFirstRepairLoop(
   const maxAttempts = normalizeMaxAttempts(options.maxAttempts);
   const orderedRules = REPAIR_RULES.filter((rule) => rule.failureClass === normalizedInput.failureClass);
   const history: RepairAttemptRecord[] = [];
+  const now = options.now ?? (() => new Date());
   const feedbackTensorPath = normalizeOptionalOutputPath(options.feedbackTensorPath);
+  const traceInspectionPath = normalizeOptionalOutputPath(options.traceInspectionPath);
+  const traceInspectionReportPath = normalizeOptionalOutputPath(options.traceInspectionReportPath);
+  const shouldEmitTraceInspection =
+    traceInspectionPath !== undefined || traceInspectionReportPath !== undefined;
+  const shouldResolveRunContext = feedbackTensorPath !== undefined || shouldEmitTraceInspection;
+  const runId = shouldResolveRunContext
+    ? resolveRunId({
+        runId: options.runId,
+        runIdFactory: options.runIdFactory
+      })
+    : "";
+  const traceEntryId = normalizeOptionalNonEmptyString(options.traceEntryId);
+  const startedAt = shouldEmitTraceInspection ? resolveTimestamp(now) : "";
   const feedbackContext = (() => {
     if (feedbackTensorPath === undefined) {
       return undefined;
     }
 
-    const runId = resolveRunId({
-      runId: options.runId,
-      runIdFactory: options.runIdFactory
-    });
-
     return {
       feedbackTensorPath,
       runId,
-      now: options.now ?? (() => new Date()),
+      now,
       feedbackIdFactory: options.feedbackIdFactory ?? (() => createFeedbackIdFallback(runId)),
-      traceEntryId: normalizeOptionalNonEmptyString(options.traceEntryId)
+      traceEntryId
     };
   })();
 
@@ -827,18 +981,30 @@ export function runRuleFirstRepairLoop(
     repairedExcerpt?: string;
   }): RepairLoopResult => {
     const result = createTerminalResult(params);
+    const completedAt = shouldEmitTraceInspection ? resolveTimestamp(now) : "";
+    const feedbackTensorEmission = feedbackContext
+      ? emitRepairFeedbackTensor({
+          input: normalizedInput,
+          result,
+          feedbackTensorPath: feedbackContext.feedbackTensorPath,
+          runId: feedbackContext.runId,
+          now: feedbackContext.now,
+          feedbackIdFactory: feedbackContext.feedbackIdFactory,
+          traceEntryId: feedbackContext.traceEntryId
+        })
+      : undefined;
 
-    if (feedbackContext) {
-      emitRepairFeedbackTensor({
-        input: normalizedInput,
-        result,
-        feedbackTensorPath: feedbackContext.feedbackTensorPath,
-        runId: feedbackContext.runId,
-        now: feedbackContext.now,
-        feedbackIdFactory: feedbackContext.feedbackIdFactory,
-        traceEntryId: feedbackContext.traceEntryId
-      });
-    }
+    emitRepairTraceInspection({
+      runId,
+      traceEntryId,
+      startedAt,
+      completedAt,
+      feedbackTensorPath,
+      feedbackTensorEmission,
+      traceInspectionPath,
+      traceInspectionReportPath,
+      result
+    });
 
     return result;
   };

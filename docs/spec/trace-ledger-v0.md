@@ -23,5 +23,18 @@ Trace Ledger v0 defines the minimal JSON record emitted for every runtime invoca
   - Success: `{ "status": "success" }`
   - Failure: `{ "status": "failure", "error": { "name": string, "message": string } }`
 
+## Related Trace Inspection Outputs
+- Runtime may emit optional trace-inspection artifacts in parallel with ledger output:
+  - machine-readable JSON-lines records (`options.traceInspectionPath`)
+  - human-readable text report entries (`options.traceInspectionReportPath`)
+- Inspection entries link the runtime invocation across:
+  - trace-ledger linkage: `trace_ledger.trace_entry_id`
+  - FeedbackTensor linkage: `feedback_tensor.feedback_id` and `feedback_tensor.trace_entry_id`
+  - continuation-gate linkage: `continuation_gate.decision` and `continuation_gate.reason_code`
+- Inspection entries include decision-rationale details used by reliability review:
+  - confidence metadata via `feedback_tensor.confidence` (`score`, `rationale`, `calibration_band`)
+  - repair outcomes and timeline via `repair.{decision, reason_code, history[]}`
+- Trace-inspection writes are best-effort and must not change runtime invocation outcomes.
+
 ## Files
 - Schema: `docs/spec/schemas/traceledger-v0.schema.json`

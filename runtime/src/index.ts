@@ -23,6 +23,12 @@ import {
   type ContinuationGateReasonCode,
   type EvaluateContinuationGateInput
 } from "./continuation-gate.ts";
+import {
+  TRACE_INSPECTION_SCHEMA_VERSION,
+  emitTraceInspectionEntry,
+  emitTraceInspectionReport,
+  type TraceInspectionEntryV0
+} from "./trace-inspection.ts";
 
 export interface SemanticIrEnvelope {
   version: string;
@@ -38,6 +44,8 @@ export interface RuntimeResult {
 export interface RunSemanticIrOptions {
   traceLedgerPath?: string;
   feedbackTensorPath?: string;
+  traceInspectionPath?: string;
+  traceInspectionReportPath?: string;
   continuationGate?: EvaluateContinuationGateInput;
   now?: () => Date;
   runIdFactory?: () => string;
@@ -213,6 +221,17 @@ function resolveRuntimeFailureClass(error: unknown): FeedbackTensorFailureClass 
   return "deterministic_runtime";
 }
 
+interface RuntimeFeedbackTensorEmissionResult {
+  emitted: boolean;
+  feedbackId: string;
+  traceEntryId?: string;
+  failureSignal: NonNullable<TraceInspectionEntryV0["feedback_tensor"]["failure_signal"]>;
+  confidence: NonNullable<TraceInspectionEntryV0["feedback_tensor"]["confidence"]>;
+  proposedRepairAction: NonNullable<
+    TraceInspectionEntryV0["feedback_tensor"]["proposed_repair_action"]
+  >;
+}
+
 function emitRuntimeFailureFeedbackTensor(params: {
   runId: string;
   generatedAt: string;
@@ -222,13 +241,14 @@ function emitRuntimeFailureFeedbackTensor(params: {
   errorCode: string;
   error: TraceLedgerError;
   traceEntryId?: string;
-}): void {
+}): RuntimeFeedbackTensorEmissionResult | undefined {
   if (!params.feedbackTensorPath) {
-    return;
+    return undefined;
   }
 
+  const feedbackId = resolveFeedbackId(params.feedbackIdFactory);
   const entry = createFeedbackTensorEntry({
-    feedbackId: resolveFeedbackId(params.feedbackIdFactory),
+    feedbackId,
     generatedAt: params.generatedAt,
     failureSignal: {
       class: params.failureClass,
@@ -279,7 +299,50 @@ function emitRuntimeFailureFeedbackTensor(params: {
 
   try {
     emitFeedbackTensorEntry(entry, { outputPath: params.feedbackTensorPath });
+    return {
+      emitted: true,
+      feedbackId,
+      traceEntryId: entry.provenance.trace_entry_id,
+      failureSignal: {
+        class: entry.failure_signal.class,
+        stage: entry.failure_signal.stage,
+        continuation_allowed: entry.failure_signal.continuation_allowed,
+        error_code: entry.failure_signal.error_code
+      },
+      confidence: {
+        score: entry.confidence.score,
+        rationale: entry.confidence.rationale,
+        calibration_band: entry.confidence.calibration_band
+      },
+      proposedRepairAction: {
+        action: entry.proposed_repair_action.action,
+        requires_human_approval: entry.proposed_repair_action.requires_human_approval,
+        target: entry.proposed_repair_action.target
+      }
+    };
   } catch {}
+
+  return {
+    emitted: false,
+    feedbackId,
+    traceEntryId: entry.provenance.trace_entry_id,
+    failureSignal: {
+      class: entry.failure_signal.class,
+      stage: entry.failure_signal.stage,
+      continuation_allowed: entry.failure_signal.continuation_allowed,
+      error_code: entry.failure_signal.error_code
+    },
+    confidence: {
+      score: entry.confidence.score,
+      rationale: entry.confidence.rationale,
+      calibration_band: entry.confidence.calibration_band
+    },
+    proposedRepairAction: {
+      action: entry.proposed_repair_action.action,
+      requires_human_approval: entry.proposed_repair_action.requires_human_approval,
+      target: entry.proposed_repair_action.target
+    }
+  };
 }
 
 function emitRuntimeTraceLedger(params: {
@@ -337,17 +400,99 @@ function resolveRuntimeFailureCode(error: unknown, traceError: TraceLedgerError)
   return traceError.name;
 }
 
+function emitRuntimeTraceInspection(params: {
+  runId: string;
+  startedAt: string;
+  completedAt: string;
+  generatedAt: string;
+  traceId?: string;
+  error?: TraceLedgerError;
+  failureCode: string;
+  continuationDecision: ContinuationGateDecision;
+  traceLedgerPath?: string;
+  traceLedgerWritten: boolean;
+  feedbackTensorPath?: string;
+  feedbackTensorEmission?: RuntimeFeedbackTensorEmissionResult;
+  traceInspectionPath?: string;
+  traceInspectionReportPath?: string;
+}): void {
+  if (!params.traceInspectionPath && !params.traceInspectionReportPath) {
+    return;
+  }
+
+  const entry: TraceInspectionEntryV0 = {
+    schema_version: TRACE_INSPECTION_SCHEMA_VERSION,
+    run_id: params.runId,
+    started_at: params.startedAt,
+    completed_at: params.completedAt,
+    generated_at: params.generatedAt,
+    invocation:
+      params.error === undefined
+        ? {
+            status: "success",
+            trace_id: params.traceId ?? "trace-unavailable"
+          }
+        : {
+            status: "failure",
+            failure_code: params.failureCode,
+            error: params.error
+          },
+    continuation_gate: {
+      configured: params.continuationDecision.reasonCode !== "CONTINUATION_GATE_NOT_CONFIGURED",
+      decision: params.continuationDecision.decision,
+      continuation_allowed: params.continuationDecision.continuationAllowed,
+      reason_code: params.continuationDecision.reasonCode,
+      detail: params.continuationDecision.detail
+    },
+    trace_ledger: {
+      configured: params.traceLedgerPath !== undefined,
+      emitted: params.traceLedgerWritten,
+      output_path: params.traceLedgerPath,
+      trace_entry_id: params.traceLedgerWritten ? params.runId : undefined
+    },
+    feedback_tensor: {
+      configured: params.feedbackTensorPath !== undefined,
+      emitted: params.feedbackTensorEmission?.emitted ?? false,
+      output_path: params.feedbackTensorPath,
+      feedback_id: params.feedbackTensorEmission?.feedbackId,
+      trace_entry_id: params.feedbackTensorEmission?.traceEntryId,
+      failure_signal: params.feedbackTensorEmission?.failureSignal,
+      confidence: params.feedbackTensorEmission?.confidence,
+      proposed_repair_action: params.feedbackTensorEmission?.proposedRepairAction
+    }
+  };
+
+  if (params.traceInspectionPath) {
+    try {
+      emitTraceInspectionEntry(entry, { outputPath: params.traceInspectionPath });
+    } catch {}
+  }
+
+  if (params.traceInspectionReportPath) {
+    try {
+      emitTraceInspectionReport(entry, { outputPath: params.traceInspectionReportPath });
+    } catch {}
+  }
+}
+
 export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOptions = {}): RuntimeResult {
   const now = options.now ?? (() => new Date());
   const runIdFactory = options.runIdFactory ?? (() => randomUUID());
   const feedbackIdFactory = options.feedbackIdFactory ?? (() => createFeedbackIdFallback());
   const traceLedgerPath = normalizeOutputPath(options.traceLedgerPath);
   const feedbackTensorPath = normalizeOutputPath(options.feedbackTensorPath);
+  const traceInspectionPath = normalizeOutputPath(options.traceInspectionPath);
+  const traceInspectionReportPath = normalizeOutputPath(options.traceInspectionReportPath);
+  const shouldEmitTraceInspection =
+    traceInspectionPath !== undefined || traceInspectionReportPath !== undefined;
 
-  const shouldResolveRunContext = traceLedgerPath !== undefined || feedbackTensorPath !== undefined;
+  const shouldResolveRunContext =
+    traceLedgerPath !== undefined || feedbackTensorPath !== undefined || shouldEmitTraceInspection;
   const runId = shouldResolveRunContext ? resolveTraceRunId(runIdFactory) : "";
-  const startedAt = traceLedgerPath ? resolveTraceTimestamp(now) : "";
+  const startedAt =
+    traceLedgerPath !== undefined || shouldEmitTraceInspection ? resolveTraceTimestamp(now) : "";
 
+  let invocationTraceId = "";
   let invocationError: TraceLedgerError | undefined;
   let invocationFailureClass: FeedbackTensorFailureClass = "deterministic_runtime";
   let invocationFailureCode = "RUNTIME_INVOCATION_ERROR";
@@ -378,9 +523,10 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
       throw new RuntimeContinuationGateError(continuationDecision);
     }
 
+    invocationTraceId = `trace-${version}`;
     return {
       ok: true,
-      traceId: `trace-${version}`,
+      traceId: invocationTraceId,
       continuationDecision
     };
   } catch (error) {
@@ -400,18 +546,36 @@ export function runSemanticIr(ir: SemanticIrEnvelope, options: RunSemanticIrOpti
         })
       : false;
 
-    if (feedbackTensorPath && invocationError) {
-      emitRuntimeFailureFeedbackTensor({
-        runId,
-        generatedAt: completedAt,
-        feedbackTensorPath,
-        feedbackIdFactory,
-        failureClass: invocationFailureClass,
-        errorCode: invocationFailureCode,
-        error: invocationError,
-        traceEntryId: traceLedgerWritten ? runId : undefined
-      });
-    }
+    const feedbackTensorEmission =
+      feedbackTensorPath && invocationError
+        ? emitRuntimeFailureFeedbackTensor({
+            runId,
+            generatedAt: completedAt,
+            feedbackTensorPath,
+            feedbackIdFactory,
+            failureClass: invocationFailureClass,
+            errorCode: invocationFailureCode,
+            error: invocationError,
+            traceEntryId: traceLedgerWritten ? runId : undefined
+          })
+        : undefined;
+
+    emitRuntimeTraceInspection({
+      runId,
+      startedAt,
+      completedAt,
+      generatedAt: completedAt,
+      traceId: invocationTraceId,
+      error: invocationError,
+      failureCode: invocationFailureCode,
+      continuationDecision,
+      traceLedgerPath,
+      traceLedgerWritten,
+      feedbackTensorPath,
+      feedbackTensorEmission,
+      traceInspectionPath,
+      traceInspectionReportPath
+    });
   }
 }
 
@@ -427,6 +591,16 @@ export {
   type VerificationCheckResult,
   type VerificationStatusSummary
 } from "./continuation-gate.ts";
+
+export {
+  TRACE_INSPECTION_SCHEMA_VERSION,
+  emitTraceInspectionEntry,
+  emitTraceInspectionReport,
+  formatTraceInspectionReport,
+  type EmitTraceInspectionEntryOptions,
+  type EmitTraceInspectionReportOptions,
+  type TraceInspectionEntryV0
+} from "./trace-inspection.ts";
 
 export {
   TRACE_LEDGER_SCHEMA_VERSION,

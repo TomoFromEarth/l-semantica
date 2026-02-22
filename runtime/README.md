@@ -32,6 +32,9 @@ Execution engine, policy enforcement, and replay support.
 - Rule order is stable and exported as `RULE_FIRST_REPAIR_ORDER`.
 - Retry behavior is bounded by `options.maxAttempts` (default `2`, hard cap `10`).
 - FeedbackTensor emission is opt-in via `options.feedbackTensorPath` and emits one terminal repair outcome record per invocation.
+- Trace-inspection emission is opt-in via:
+  - `options.traceInspectionPath` (machine-readable NDJSON)
+  - `options.traceInspectionReportPath` (human-readable text report)
 - Repair FeedbackTensor emission supports run-linkage fields via `options.runId` (or `options.runIdFactory`) and optional `options.traceEntryId`.
 - Terminal outcomes are explicit and reason-coded:
   - `repaired`: deterministic recovery succeeded and `continuationAllowed` is `true`.
@@ -51,10 +54,20 @@ Execution engine, policy enforcement, and replay support.
 - `runSemanticIr(ir, options)` emits one trace ledger entry per invocation.
 - Set `options.traceLedgerPath` to append JSON-lines records to a file.
 - Set `options.feedbackTensorPath` to append FeedbackTensor v1 JSON-lines records for failed runtime invocations.
+- Set `options.traceInspectionPath` to append machine-readable trace-inspection JSON-lines records.
+- Set `options.traceInspectionReportPath` to append human-readable trace-inspection report entries.
 - Trace ledger emission is best-effort: write failures do not fail `runSemanticIr`.
 - FeedbackTensor emission is best-effort: write failures do not fail `runSemanticIr` or `runRuleFirstRepairLoop`.
+- Trace-inspection emission is best-effort: write failures do not fail `runSemanticIr` or `runRuleFirstRepairLoop`.
 - Runtime FeedbackTensor `provenance.trace_entry_id` is populated only when trace-ledger append succeeds.
-- Hook evaluation (`runIdFactory`, `now`) occurs only when trace or feedback emission is enabled.
+- Trace inspection links include:
+  - trace-ledger linkage via `trace_ledger.trace_entry_id`
+  - FeedbackTensor linkage via `feedback_tensor.feedback_id` and `feedback_tensor.trace_entry_id`
+  - continuation-gate decision linkage via `continuation_gate.decision` and `continuation_gate.reason_code`
+- Trace inspection payloads also include:
+  - FeedbackTensor confidence metadata via `feedback_tensor.confidence`
+  - repair outcomes and attempt timeline via `repair.{decision, reason_code, history[]}`
+- Hook evaluation (`runIdFactory`, `now`) occurs only when trace, feedback, or trace-inspection emission is enabled.
 - `run_id` is normalized to a non-empty value before emission.
 - Timestamp hooks are best-effort: invalid/throwing `options.now` values fall back to runtime clock time.
 - Each entry includes:
