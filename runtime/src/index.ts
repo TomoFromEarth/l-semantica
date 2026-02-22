@@ -667,6 +667,32 @@ export {
 } from "./feedback-tensor.ts";
 
 export {
+  DEFAULT_PATCH_RUN_MATERIALIZATION,
+  DEFAULT_PATCH_RUN_POLICY_SENSITIVE_PATH_PATTERNS,
+  DEFAULT_PATCH_RUN_REQUIRED_CHECKS,
+  DEFAULT_PATCH_RUN_TOOL_VERSION,
+  PATCH_RUN_ARTIFACT_TYPE,
+  PATCH_RUN_CHECK_STATUSES,
+  PATCH_RUN_DECISIONS,
+  PATCH_RUN_FORMATS,
+  PATCH_RUN_REASON_CODES,
+  PATCH_RUN_SCHEMA_VERSION,
+  PatchRunError,
+  createPatchRunArtifact,
+  type CreatePatchRunArtifactOptions,
+  type PatchRunArtifactInputRef,
+  type PatchRunArtifactV1,
+  type PatchRunCheckStatus,
+  type PatchRunDecision,
+  type PatchRunDraftVerificationResult,
+  type PatchRunErrorCode,
+  type PatchRunFormat,
+  type PatchRunPatch,
+  type PatchRunReasonCode,
+  type PatchRunVerificationResult
+} from "./patch-run.ts";
+
+export {
   DEFAULT_SAFE_DIFF_PLAN_FORBIDDEN_PATH_PATTERNS,
   DEFAULT_SAFE_DIFF_PLAN_MAX_FILE_CHANGES,
   DEFAULT_SAFE_DIFF_PLAN_MAX_HUNKS,
