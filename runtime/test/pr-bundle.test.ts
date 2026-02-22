@@ -404,3 +404,30 @@ test("createPrBundleArtifact validates patch run input artifact shape", () => {
       error.code === "INVALID_PATCH_RUN"
   );
 });
+
+test("createPrBundleArtifact rejects patch-run artifacts with blank-normalized required_checks", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    const upstream = createPatchRunArtifacts(
+      repo.root,
+      "Update capability read_docs description to mention local RFCs"
+    );
+    const malformed = JSON.parse(JSON.stringify(upstream.patchRun)) as typeof upstream.patchRun;
+    malformed.payload.verification.required_checks = ["   "] as never;
+
+    assert.throws(
+      () =>
+        createPrBundleArtifact({
+          patchRun: malformed
+        }),
+      (error: unknown) =>
+        error instanceof PrBundleError &&
+        error.code === "INVALID_PATCH_RUN" &&
+        error.message ===
+          "PR bundle patch run payload.verification.required_checks must include at least one required check"
+    );
+  } finally {
+    repo.cleanup();
+  }
+});

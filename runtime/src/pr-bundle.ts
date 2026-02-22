@@ -583,6 +583,12 @@ function normalizePatchRunArtifact(input: unknown): NormalizedPatchRunInput {
       "INVALID_PATCH_RUN"
     );
   }
+  if (requiredChecks.length === 0) {
+    throw new PrBundleError(
+      "PR bundle patch run payload.verification.required_checks must include at least one required check",
+      "INVALID_PATCH_RUN"
+    );
+  }
 
   const results = normalizePatchRunVerificationResults(
     verification.results,
