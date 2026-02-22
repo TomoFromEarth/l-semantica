@@ -103,3 +103,67 @@ Report fields:
 - `bucket_summary[]` (per calibration band `evaluated_count`, `pass_count`, `fail_count`)
 - `aggregate.pass_count`
 - `aggregate.fail_count`
+
+## M1 Reliability Benchmark Gates (`#35`)
+
+Run from repository root:
+
+```bash
+pnpm bench:reliability
+```
+
+Threshold-enforced run (used in CI):
+
+```bash
+pnpm bench:reliability -- --enforce-thresholds
+```
+
+Optional flags:
+
+```bash
+node --experimental-strip-types benchmarks/run-reliability-gates.mjs \
+  --config benchmarks/fixtures/reliability/failure-corpus.v0.json \
+  --thresholds benchmarks/reliability-gates-thresholds.v1.json \
+  --out benchmarks/reports/reliability-gates-report.json \
+  --enforce-thresholds
+```
+
+Flag path behavior:
+- explicit `--config`, `--thresholds`, and `--out` values are resolved from the current working directory.
+- when omitted, defaults are resolved from the benchmarks directory.
+
+Defaults:
+- corpus path: `benchmarks/fixtures/reliability/failure-corpus.v0.json`
+- threshold config path: `benchmarks/reliability-gates-thresholds.v1.json`
+- report output path: `benchmarks/reports/reliability-gates-report.json`
+
+Threshold config fields:
+- `schema_version`
+- `threshold_id`
+- `corpus_schema_version`
+- `metrics.recovery_rate`
+- `metrics.safe_block_rate`
+- `metrics.safe_allow_rate`
+
+Gate metrics:
+- `recovery_rate`: `recovered_fixture_count / recoverable_fixture_count`
+- `safe_block_rate`: `blocked_unsafe_continuation_count / non_recoverable_fixture_count`
+- `safe_allow_rate`: `allowed_compliant_continuation_count / recoverable_fixture_count`
+
+Coverage enforcement:
+- gate evaluation requires at least one `recoverable` and one `non_recoverable` fixture for each failure class.
+- missing per-class recoverability coverage fails the reliability gate command before report generation.
+
+Report fields:
+- `schema_version`
+- `generated_at`
+- `corpus_id`
+- `corpus_schema_version`
+- `thresholds`
+- `fixture_count`
+- `results[]` (fixture-level expected vs observed classification/continuation/decision checks)
+- `aggregate.recovery`
+- `aggregate.safe_continuation`
+- `aggregate.classification`
+- `aggregate.gates` (`pass` + `failed_metrics[]`)
+- `by_failure_class[]` (per failure-class counts and rates)

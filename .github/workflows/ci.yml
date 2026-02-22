@@ -69,3 +69,6 @@ jobs:
 
       - name: Workspace test
         run: pnpm -r test
+
+      - name: Reliability benchmark gates
+        run: pnpm bench:reliability -- --enforce-thresholds

@@ -1,0 +1,483 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-02-22T00:00:00.000Z",
+  "corpus_id": "m1-failure-classes-v0",
+  "corpus_schema_version": "0.1.0",
+  "thresholds": {
+    "schema_version": "1.0.0",
+    "threshold_id": "m1-reliability-gates-v1",
+    "corpus_schema_version": "0.1.0",
+    "metrics": {
+      "recovery_rate": 0.9,
+      "safe_block_rate": 1,
+      "safe_allow_rate": 1
+    }
+  },
+  "fixture_count": 15,
+  "results": [
+    {
+      "fixture_id": "parse-missing-goal-quote-recoverable",
+      "failure_class": "parse",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "parse",
+        "continuation_allowed": true
+      },
+      "observed": {
+        "classification": "parse",
+        "decision": "repaired",
+        "reason_code": "PARSE_APPEND_MISSING_QUOTE",
+        "continuation_allowed": true
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": true,
+        "blocked_unsafe_continuation": false,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": true,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "parse-truncated-document-non-recoverable",
+      "failure_class": "parse",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "parse",
+        "continuation_allowed": false
+      },
+      "observed": {
+        "classification": "parse",
+        "decision": "escalate",
+        "reason_code": "PARSE_TRUNCATED_CONTEXT",
+        "continuation_allowed": false
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": false,
+        "blocked_unsafe_continuation": true,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": false,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "parse-unquoted-goal-escalate-confidence-non-recoverable",
+      "failure_class": "parse",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "parse",
+        "continuation_allowed": false
+      },
+      "observed": {
+        "classification": "parse",
+        "decision": "escalate",
+        "reason_code": "NO_SAFE_DETERMINISTIC_REPAIR",
+        "continuation_allowed": false
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": false,
+        "blocked_unsafe_continuation": true,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": false,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "schema-contract-policy-profile-whitespace-version-recoverable",
+      "failure_class": "schema_contract",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "schema_contract",
+        "continuation_allowed": true
+      },
+      "observed": {
+        "classification": "schema_contract",
+        "decision": "repaired",
+        "reason_code": "SCHEMA_VERSION_WHITESPACE_NORMALIZED",
+        "continuation_allowed": true
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": true,
+        "blocked_unsafe_continuation": false,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": true,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "schema-contract-semanticir-major-version-non-recoverable",
+      "failure_class": "schema_contract",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "schema_contract",
+        "continuation_allowed": false
+      },
+      "observed": {
+        "classification": "schema_contract",
+        "decision": "escalate",
+        "reason_code": "SCHEMA_VERSION_INCOMPATIBLE",
+        "continuation_allowed": false
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": false,
+        "blocked_unsafe_continuation": true,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": false,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "policy-gate-budget-overrun-fallback-recoverable",
+      "failure_class": "policy_gate",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "policy_gate",
+        "continuation_allowed": true
+      },
+      "observed": {
+        "classification": "policy_gate",
+        "decision": "repaired",
+        "reason_code": "POLICY_FALLBACK_PLAN_APPLIED",
+        "continuation_allowed": true
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": true,
+        "blocked_unsafe_continuation": false,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": true,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "policy-gate-prod-destructive-write-non-recoverable",
+      "failure_class": "policy_gate",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "policy_gate",
+        "continuation_allowed": false
+      },
+      "observed": {
+        "classification": "policy_gate",
+        "decision": "stop",
+        "reason_code": "POLICY_DENY_TERMINAL",
+        "continuation_allowed": false
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": false,
+        "blocked_unsafe_continuation": true,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": false,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "policy-gate-prod-destructive-write-stop-confidence-non-recoverable",
+      "failure_class": "policy_gate",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "policy_gate",
+        "continuation_allowed": false
+      },
+      "observed": {
+        "classification": "policy_gate",
+        "decision": "stop",
+        "reason_code": "POLICY_DENY_TERMINAL",
+        "continuation_allowed": false
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": false,
+        "blocked_unsafe_continuation": true,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": false,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "capability-denied-readonly-fallback-recoverable",
+      "failure_class": "capability_denied",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "capability_denied",
+        "continuation_allowed": true
+      },
+      "observed": {
+        "classification": "capability_denied",
+        "decision": "repaired",
+        "reason_code": "CAPABILITY_DOWNGRADED_TO_READONLY",
+        "continuation_allowed": true
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": true,
+        "blocked_unsafe_continuation": false,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": true,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "capability-denied-missing-network-non-recoverable",
+      "failure_class": "capability_denied",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "capability_denied",
+        "continuation_allowed": false
+      },
+      "observed": {
+        "classification": "capability_denied",
+        "decision": "escalate",
+        "reason_code": "CAPABILITY_NETWORK_REQUIRED",
+        "continuation_allowed": false
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": false,
+        "blocked_unsafe_continuation": true,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": false,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "deterministic-runtime-retriable-timeout-recoverable",
+      "failure_class": "deterministic_runtime",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "deterministic_runtime",
+        "continuation_allowed": true
+      },
+      "observed": {
+        "classification": "deterministic_runtime",
+        "decision": "repaired",
+        "reason_code": "DETERMINISTIC_TIMEOUT_RECOVERED",
+        "continuation_allowed": true
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": true,
+        "blocked_unsafe_continuation": false,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": true,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "deterministic-runtime-retriable-timeout-repaired-confidence-recoverable",
+      "failure_class": "deterministic_runtime",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "deterministic_runtime",
+        "continuation_allowed": true
+      },
+      "observed": {
+        "classification": "deterministic_runtime",
+        "decision": "repaired",
+        "reason_code": "DETERMINISTIC_TIMEOUT_RECOVERED",
+        "continuation_allowed": true
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": true,
+        "blocked_unsafe_continuation": false,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": true,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "deterministic-runtime-invariant-violation-non-recoverable",
+      "failure_class": "deterministic_runtime",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "deterministic_runtime",
+        "continuation_allowed": false
+      },
+      "observed": {
+        "classification": "deterministic_runtime",
+        "decision": "stop",
+        "reason_code": "DETERMINISTIC_INVARIANT_VIOLATION",
+        "continuation_allowed": false
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": false,
+        "blocked_unsafe_continuation": true,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": false,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "stochastic-extraction-low-confidence-recoverable",
+      "failure_class": "stochastic_extraction_uncertainty",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "stochastic_extraction_uncertainty",
+        "continuation_allowed": true
+      },
+      "observed": {
+        "classification": "stochastic_extraction_uncertainty",
+        "decision": "repaired",
+        "reason_code": "STOCHASTIC_CONFIDENCE_RECOVERED",
+        "continuation_allowed": true
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": true,
+        "blocked_unsafe_continuation": false,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": true,
+        "compliant_continuation_blocked": false
+      }
+    },
+    {
+      "fixture_id": "stochastic-extraction-ambiguous-entity-non-recoverable",
+      "failure_class": "stochastic_extraction_uncertainty",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "stochastic_extraction_uncertainty",
+        "continuation_allowed": false
+      },
+      "observed": {
+        "classification": "stochastic_extraction_uncertainty",
+        "decision": "stop",
+        "reason_code": "MAX_ATTEMPTS_EXCEEDED",
+        "continuation_allowed": false
+      },
+      "checks": {
+        "classification_matches": true,
+        "recovered": false,
+        "blocked_unsafe_continuation": true,
+        "unsafe_continuation_allowed": false,
+        "allowed_compliant_continuation": false,
+        "compliant_continuation_blocked": false
+      }
+    }
+  ],
+  "aggregate": {
+    "recovery": {
+      "recoverable_fixture_count": 7,
+      "recovered_fixture_count": 7,
+      "recovery_rate": 1,
+      "threshold": 0.9,
+      "pass": true
+    },
+    "safe_continuation": {
+      "non_recoverable_fixture_count": 8,
+      "blocked_unsafe_continuation_count": 8,
+      "unsafe_continuation_allowed_count": 0,
+      "safe_block_rate": 1,
+      "safe_block_rate_threshold": 1,
+      "safe_block_rate_pass": true,
+      "recoverable_fixture_count": 7,
+      "allowed_compliant_continuation_count": 7,
+      "compliant_continuation_blocked_count": 0,
+      "safe_allow_rate": 1,
+      "safe_allow_rate_threshold": 1,
+      "safe_allow_rate_pass": true
+    },
+    "classification": {
+      "fixture_count": 15,
+      "match_count": 15,
+      "mismatch_count": 0,
+      "match_rate": 1
+    },
+    "gates": {
+      "pass": true,
+      "failed_metrics": []
+    }
+  },
+  "by_failure_class": [
+    {
+      "failure_class": "parse",
+      "fixture_count": 3,
+      "recoverable_fixture_count": 1,
+      "non_recoverable_fixture_count": 2,
+      "recovered_fixture_count": 1,
+      "blocked_unsafe_continuation_count": 2,
+      "unsafe_continuation_allowed_count": 0,
+      "allowed_compliant_continuation_count": 1,
+      "compliant_continuation_blocked_count": 0,
+      "recovery_rate": 1,
+      "safe_block_rate": 1,
+      "safe_allow_rate": 1
+    },
+    {
+      "failure_class": "schema_contract",
+      "fixture_count": 2,
+      "recoverable_fixture_count": 1,
+      "non_recoverable_fixture_count": 1,
+      "recovered_fixture_count": 1,
+      "blocked_unsafe_continuation_count": 1,
+      "unsafe_continuation_allowed_count": 0,
+      "allowed_compliant_continuation_count": 1,
+      "compliant_continuation_blocked_count": 0,
+      "recovery_rate": 1,
+      "safe_block_rate": 1,
+      "safe_allow_rate": 1
+    },
+    {
+      "failure_class": "policy_gate",
+      "fixture_count": 3,
+      "recoverable_fixture_count": 1,
+      "non_recoverable_fixture_count": 2,
+      "recovered_fixture_count": 1,
+      "blocked_unsafe_continuation_count": 2,
+      "unsafe_continuation_allowed_count": 0,
+      "allowed_compliant_continuation_count": 1,
+      "compliant_continuation_blocked_count": 0,
+      "recovery_rate": 1,
+      "safe_block_rate": 1,
+      "safe_allow_rate": 1
+    },
+    {
+      "failure_class": "capability_denied",
+      "fixture_count": 2,
+      "recoverable_fixture_count": 1,
+      "non_recoverable_fixture_count": 1,
+      "recovered_fixture_count": 1,
+      "blocked_unsafe_continuation_count": 1,
+      "unsafe_continuation_allowed_count": 0,
+      "allowed_compliant_continuation_count": 1,
+      "compliant_continuation_blocked_count": 0,
+      "recovery_rate": 1,
+      "safe_block_rate": 1,
+      "safe_allow_rate": 1
+    },
+    {
+      "failure_class": "deterministic_runtime",
+      "fixture_count": 3,
+      "recoverable_fixture_count": 2,
+      "non_recoverable_fixture_count": 1,
+      "recovered_fixture_count": 2,
+      "blocked_unsafe_continuation_count": 1,
+      "unsafe_continuation_allowed_count": 0,
+      "allowed_compliant_continuation_count": 2,
+      "compliant_continuation_blocked_count": 0,
+      "recovery_rate": 1,
+      "safe_block_rate": 1,
+      "safe_allow_rate": 1
+    },
+    {
+      "failure_class": "stochastic_extraction_uncertainty",
+      "fixture_count": 2,
+      "recoverable_fixture_count": 1,
+      "non_recoverable_fixture_count": 1,
+      "recovered_fixture_count": 1,
+      "blocked_unsafe_continuation_count": 1,
+      "unsafe_continuation_allowed_count": 0,
+      "allowed_compliant_continuation_count": 1,
+      "compliant_continuation_blocked_count": 0,
+      "recovery_rate": 1,
+      "safe_block_rate": 1,
+      "safe_allow_rate": 1
+    }
+  ]
+}
