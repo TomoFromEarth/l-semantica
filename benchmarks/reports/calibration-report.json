@@ -1,0 +1,75 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-02-21T00:00:00.000Z",
+  "corpus_id": "m1-failure-classes-v0",
+  "fixture_count": 15,
+  "evaluated_fixture_count": 3,
+  "results": [
+    {
+      "fixture_id": "parse-unquoted-goal-escalate-confidence-non-recoverable",
+      "failure_class": "parse",
+      "expected": {
+        "score_min": 0.45,
+        "score_max": 0.45,
+        "calibration_band": "medium"
+      },
+      "observed": {
+        "score": 0.45,
+        "calibration_band": "medium"
+      },
+      "pass": true
+    },
+    {
+      "fixture_id": "policy-gate-prod-destructive-write-stop-confidence-non-recoverable",
+      "failure_class": "policy_gate",
+      "expected": {
+        "score_min": 0.2,
+        "score_max": 0.2,
+        "calibration_band": "low"
+      },
+      "observed": {
+        "score": 0.2,
+        "calibration_band": "low"
+      },
+      "pass": true
+    },
+    {
+      "fixture_id": "deterministic-runtime-retriable-timeout-repaired-confidence-recoverable",
+      "failure_class": "deterministic_runtime",
+      "expected": {
+        "score_min": 0.9,
+        "score_max": 0.9,
+        "calibration_band": "high"
+      },
+      "observed": {
+        "score": 0.9,
+        "calibration_band": "high"
+      },
+      "pass": true
+    }
+  ],
+  "bucket_summary": [
+    {
+      "calibration_band": "low",
+      "evaluated_count": 1,
+      "pass_count": 1,
+      "fail_count": 0
+    },
+    {
+      "calibration_band": "medium",
+      "evaluated_count": 1,
+      "pass_count": 1,
+      "fail_count": 0
+    },
+    {
+      "calibration_band": "high",
+      "evaluated_count": 1,
+      "pass_count": 1,
+      "fail_count": 0
+    }
+  ],
+  "aggregate": {
+    "pass_count": 3,
+    "fail_count": 0
+  }
+}

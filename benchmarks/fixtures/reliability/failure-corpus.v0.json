@@ -34,6 +34,26 @@
       }
     },
     {
+      "id": "parse-unquoted-goal-escalate-confidence-non-recoverable",
+      "failure_class": "parse",
+      "scenario": "Goal declaration is malformed without quotes, so no safe deterministic parse repair matches.",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "parse",
+        "continuation_allowed": false,
+        "expected_confidence": {
+          "score_min": 0.45,
+          "score_max": 0.45,
+          "calibration_band": "medium"
+        }
+      },
+      "input": {
+        "stage": "compile",
+        "artifact": "ls_source",
+        "excerpt": "goal Ship release"
+      }
+    },
+    {
       "id": "schema-contract-policy-profile-whitespace-version-recoverable",
       "failure_class": "schema_contract",
       "scenario": "PolicyProfile schema version contains trailing whitespace and can be normalized.",
@@ -94,6 +114,26 @@
       }
     },
     {
+      "id": "policy-gate-prod-destructive-write-stop-confidence-non-recoverable",
+      "failure_class": "policy_gate",
+      "scenario": "Production policy denial is terminal and should emit low stop confidence.",
+      "recoverability": "non_recoverable",
+      "expected": {
+        "classification": "policy_gate",
+        "continuation_allowed": false,
+        "expected_confidence": {
+          "score_min": 0.2,
+          "score_max": 0.2,
+          "calibration_band": "low"
+        }
+      },
+      "input": {
+        "stage": "policy_gate",
+        "artifact": "policy_profile",
+        "excerpt": "action=delete_resource; environment=production; rule=deny"
+      }
+    },
+    {
       "id": "capability-denied-readonly-fallback-recoverable",
       "failure_class": "capability_denied",
       "scenario": "Requested write capability is unavailable, but read-only inspection path satisfies objective.",
@@ -131,6 +171,26 @@
       "expected": {
         "classification": "deterministic_runtime",
         "continuation_allowed": true
+      },
+      "input": {
+        "stage": "runtime",
+        "artifact": "runtime_event",
+        "excerpt": "step=resolve_manifest; error=timeout; retryable=true"
+      }
+    },
+    {
+      "id": "deterministic-runtime-retriable-timeout-repaired-confidence-recoverable",
+      "failure_class": "deterministic_runtime",
+      "scenario": "Retryable deterministic timeout should emit high repaired confidence after bounded recovery.",
+      "recoverability": "recoverable",
+      "expected": {
+        "classification": "deterministic_runtime",
+        "continuation_allowed": true,
+        "expected_confidence": {
+          "score_min": 0.9,
+          "score_max": 0.9,
+          "calibration_band": "high"
+        }
       },
       "input": {
         "stage": "runtime",

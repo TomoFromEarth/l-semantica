@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   runRuleFirstRepairLoop,
+  type FeedbackTensorV1,
   type RepairArtifact,
   type RepairFailureClass,
   type RepairStage
@@ -20,6 +22,7 @@ type FailureClass =
   | "stochastic_extraction_uncertainty";
 
 type Recoverability = "recoverable" | "non_recoverable";
+type CalibrationBand = "low" | "medium" | "high";
 
 interface ReliabilityFixture {
   id: string;
@@ -29,6 +32,11 @@ interface ReliabilityFixture {
   expected: {
     classification: FailureClass;
     continuation_allowed: boolean;
+    expected_confidence?: {
+      score_min: number;
+      score_max: number;
+      calibration_band: CalibrationBand;
+    };
   };
   input: {
     stage: string;
@@ -158,6 +166,29 @@ test("reliability fixture corpus validator rejects failure-class classification 
   );
 });
 
+test("reliability fixture corpus validator rejects invalid expected confidence ranges", async () => {
+  const repoRoot = getRepoRoot();
+  const corpusPath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
+  const fixtureModule = await loadReliabilityFixtureModule();
+  const corpus = readReliabilityCorpus(corpusPath);
+  const confidenceFixture = corpus.fixtures.find(
+    (fixture) =>
+      fixture.id === "deterministic-runtime-retriable-timeout-repaired-confidence-recoverable"
+  );
+
+  assert.notEqual(confidenceFixture, undefined);
+  assert.notEqual(confidenceFixture?.expected.expected_confidence, undefined);
+  if (confidenceFixture?.expected.expected_confidence) {
+    confidenceFixture.expected.expected_confidence.score_min = 0.95;
+    confidenceFixture.expected.expected_confidence.score_max = 0.9;
+  }
+
+  assert.throws(
+    () => fixtureModule.validateReliabilityFixtureCorpus(corpus),
+    /fixture "deterministic-runtime-retriable-timeout-repaired-confidence-recoverable".*score_min must be less than or equal to/
+  );
+});
+
 test("reliability fixture corpus validator normalizes strings and enforces continuation invariant", async () => {
   const repoRoot = getRepoRoot();
   const corpusPath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
@@ -201,6 +232,65 @@ test("reliability fixture corpus validator normalizes strings and enforces conti
   assert.equal(corpus.fixtures[0].expected.classification, "parse");
   assert.equal(corpus.fixtures[0].input.stage, "compile");
   assert.equal(corpus.fixtures[0].input.artifact, "ls_source");
+});
+
+test("repair loop feedback emission matches fixture expected confidence windows", async () => {
+  const repoRoot = getRepoRoot();
+  const corpusPath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
+  const fixtureModule = await loadReliabilityFixtureModule();
+  const { corpus } = fixtureModule.loadReliabilityFixtureCorpus({ corpusPath });
+  const confidenceFixtures = corpus.fixtures.filter(
+    (fixture): fixture is ReliabilityFixture & {
+      expected: ReliabilityFixture["expected"] & {
+        expected_confidence: NonNullable<ReliabilityFixture["expected"]["expected_confidence"]>;
+      };
+    } => fixture.expected.expected_confidence !== undefined
+  );
+
+  assert.equal(confidenceFixtures.length > 0, true);
+
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-reliability-confidence-"));
+  try {
+    for (const fixture of confidenceFixtures) {
+      const feedbackTensorPath = join(tmpRoot, `${fixture.id}.ndjson`);
+      runRuleFirstRepairLoop(
+        {
+          failureClass: fixture.failure_class as RepairFailureClass,
+          stage: fixture.input.stage as RepairStage,
+          artifact: fixture.input.artifact as RepairArtifact,
+          excerpt: fixture.input.excerpt
+        },
+        {
+          feedbackTensorPath,
+          runId: `run-confidence-${fixture.id}`,
+          feedbackIdFactory: () => `ft-confidence-${fixture.id}`,
+          now: () => new Date("2026-02-21T23:00:00.000Z")
+        }
+      );
+
+      const lines = readFileSync(feedbackTensorPath, "utf8")
+        .trim()
+        .split("\n")
+        .filter((line) => line.length > 0);
+      assert.equal(lines.length, 1, `Fixture ${fixture.id} should emit one feedback tensor entry`);
+
+      const entry = JSON.parse(lines[0]) as FeedbackTensorV1;
+      const expectedConfidence = fixture.expected.expected_confidence;
+      assert.equal(
+        entry.confidence.score >= expectedConfidence.score_min &&
+          entry.confidence.score <= expectedConfidence.score_max,
+        true,
+        `Fixture ${fixture.id} expected confidence score in [${expectedConfidence.score_min}, ${expectedConfidence.score_max}], received ${entry.confidence.score}`
+      );
+      assert.equal(
+        entry.confidence.calibration_band,
+        expectedConfidence.calibration_band,
+        `Fixture ${fixture.id} expected calibration band ${expectedConfidence.calibration_band}`
+      );
+    }
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
 });
 
 test("reliability fixture corpus loader trims corpusPath option", async () => {
