@@ -85,6 +85,29 @@ test("reliability gate CLI emits structured report and passing gate summary", ()
   }
 });
 
+test("reliability gate CLI accepts leading -- separator before options", () => {
+  const testDirectory = fileURLToPath(new URL(".", import.meta.url));
+  const repoRoot = resolve(testDirectory, "../..");
+  const cliPath = resolve(repoRoot, "benchmarks/run-reliability-gates.mjs");
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-reliability-gates-separator-"));
+  const outputPath = resolve(tmpRoot, "reliability-gates-report.json");
+
+  try {
+    const rawStdout = runReliabilityCli(
+      [cliPath, "--", "--out", outputPath, "--enforce-thresholds"],
+      repoRoot
+    );
+    const cliOutput = JSON.parse(rawStdout) as ReliabilityGateCliOutput;
+
+    assert.equal(cliOutput.ok, true);
+    assert.equal(cliOutput.gate_pass, true);
+    assert.equal(cliOutput.report_path, outputPath);
+    assert.equal(existsSync(outputPath), true);
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
 test("reliability gate CLI enforces thresholds and fails with report output on violations", () => {
   const testDirectory = fileURLToPath(new URL(".", import.meta.url));
   const repoRoot = resolve(testDirectory, "../..");
@@ -194,6 +217,79 @@ test("reliability gate CLI enforces thresholds and fails with report output on v
     const report = JSON.parse(readFileSync(outputPath, "utf8")) as ReliabilityGateReport;
     assert.equal(report.aggregate.gates.pass, false);
     assert.equal(report.aggregate.gates.failed_metrics.includes("recovery_rate"), true);
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test("reliability gate CLI fails when corpus is missing required recoverability coverage", () => {
+  const testDirectory = fileURLToPath(new URL(".", import.meta.url));
+  const repoRoot = resolve(testDirectory, "../..");
+  const cliPath = resolve(repoRoot, "benchmarks/run-reliability-gates.mjs");
+  const fixtureCorpusPath = resolve(repoRoot, "benchmarks/fixtures/reliability/failure-corpus.v0.json");
+  const thresholdsFixturePath = resolve(repoRoot, "benchmarks/reliability-gates-thresholds.v1.json");
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-reliability-gates-coverage-"));
+  const corpusPath = resolve(tmpRoot, "failure-corpus.v0.json");
+  const thresholdsPath = resolve(tmpRoot, "reliability-gates-thresholds.v1.json");
+  const outputPath = resolve(tmpRoot, "reliability-gates-report.json");
+
+  try {
+    const corpus = JSON.parse(readFileSync(fixtureCorpusPath, "utf8")) as {
+      fixtures: Array<{
+        failure_class: string;
+        recoverability: "recoverable" | "non_recoverable";
+        expected: {
+          continuation_allowed: boolean;
+        };
+      }>;
+    };
+
+    for (const fixture of corpus.fixtures) {
+      if (fixture.failure_class === "parse" && fixture.recoverability === "non_recoverable") {
+        fixture.recoverability = "recoverable";
+        fixture.expected.continuation_allowed = true;
+      }
+    }
+
+    writeFileSync(corpusPath, `${JSON.stringify(corpus, null, 2)}\n`, "utf8");
+    writeFileSync(thresholdsPath, readFileSync(thresholdsFixturePath, "utf8"), "utf8");
+
+    assert.throws(
+      () =>
+        runReliabilityCli(
+          [
+            cliPath,
+            "--config",
+            corpusPath,
+            "--thresholds",
+            thresholdsPath,
+            "--out",
+            outputPath,
+            "--enforce-thresholds"
+          ],
+          repoRoot
+        ),
+      (error) => {
+        const commandError = error as NodeJS.ErrnoException & {
+          status?: number;
+          stderr?: string | Buffer;
+        };
+        if (commandError.status !== 1) {
+          return false;
+        }
+
+        const stderr =
+          typeof commandError.stderr === "string"
+            ? commandError.stderr
+            : commandError.stderr?.toString("utf8") ?? "";
+        return (
+          stderr.includes("missing required recoverability coverage") &&
+          stderr.includes("parse:non_recoverable")
+        );
+      }
+    );
+
+    assert.equal(existsSync(outputPath), false);
   } finally {
     rmSync(tmpRoot, { recursive: true, force: true });
   }

@@ -150,6 +150,10 @@ Gate metrics:
 - `safe_block_rate`: `blocked_unsafe_continuation_count / non_recoverable_fixture_count`
 - `safe_allow_rate`: `allowed_compliant_continuation_count / recoverable_fixture_count`
 
+Coverage enforcement:
+- gate evaluation requires at least one `recoverable` and one `non_recoverable` fixture for each failure class.
+- missing per-class recoverability coverage fails the reliability gate command before report generation.
+
 Report fields:
 - `schema_version`
 - `generated_at`

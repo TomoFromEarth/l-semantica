@@ -13,6 +13,12 @@ const THRESHOLD_SCHEMA_VERSION = "1.0.0";
 const DETERMINISTIC_GENERATED_AT = "2026-02-22T00:00:00.000Z";
 
 function parseArgs(argv) {
+  const normalizedArgv = [...argv];
+  // `pnpm <script> -- --flag` can pass a leading `--` through to Node argv.
+  if (normalizedArgv[0] === "--") {
+    normalizedArgv.shift();
+  }
+
   const options = {
     enforceThresholds: false
   };
@@ -25,27 +31,27 @@ function parseArgs(argv) {
     return valueCandidate;
   }
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
+  for (let index = 0; index < normalizedArgv.length; index += 1) {
+    const arg = normalizedArgv[index];
 
     if (arg === "--") {
-      continue;
+      break;
     }
 
     if (arg === "--config") {
-      options.configPath = readOptionValue("--config", argv[index + 1]);
+      options.configPath = readOptionValue("--config", normalizedArgv[index + 1]);
       index += 1;
       continue;
     }
 
     if (arg === "--thresholds") {
-      options.thresholdsPath = readOptionValue("--thresholds", argv[index + 1]);
+      options.thresholdsPath = readOptionValue("--thresholds", normalizedArgv[index + 1]);
       index += 1;
       continue;
     }
 
     if (arg === "--out") {
-      options.outputPath = readOptionValue("--out", argv[index + 1]);
+      options.outputPath = readOptionValue("--out", normalizedArgv[index + 1]);
       index += 1;
       continue;
     }
@@ -154,10 +160,42 @@ function validateThresholdConfig(candidate) {
 
 function safeRate(numerator, denominator) {
   if (denominator === 0) {
-    return 1;
+    return 0;
   }
 
   return numerator / denominator;
+}
+
+function validateCorpusCoverageForGates(corpus) {
+  const coverageByClass = new Map(
+    RELIABILITY_FAILURE_CLASSES.map((failureClass) => [failureClass, new Set()])
+  );
+  for (const fixture of corpus.fixtures) {
+    const coverage = coverageByClass.get(fixture.failure_class);
+    if (!coverage) {
+      continue;
+    }
+
+    coverage.add(fixture.recoverability);
+  }
+
+  const missingCoverage = [];
+  for (const failureClass of RELIABILITY_FAILURE_CLASSES) {
+    const coverage = coverageByClass.get(failureClass);
+    if (!coverage?.has("recoverable")) {
+      missingCoverage.push(`${failureClass}:recoverable`);
+    }
+
+    if (!coverage?.has("non_recoverable")) {
+      missingCoverage.push(`${failureClass}:non_recoverable`);
+    }
+  }
+
+  if (missingCoverage.length > 0) {
+    throw new Error(
+      `Reliability corpus missing required recoverability coverage for gate metrics: ${missingCoverage.join(", ")}`
+    );
+  }
 }
 
 function evaluateFixtures(corpus) {
@@ -271,9 +309,9 @@ function createFailureClassSummary(results) {
         unsafe_continuation_allowed_count: 0,
         allowed_compliant_continuation_count: 0,
         compliant_continuation_blocked_count: 0,
-        recovery_rate: 1,
-        safe_block_rate: 1,
-        safe_allow_rate: 1
+        recovery_rate: 0,
+        safe_block_rate: 0,
+        safe_allow_rate: 0
       };
     }
 
@@ -405,6 +443,7 @@ function main() {
       `Reliability thresholds corpus_schema_version "${thresholds.corpus_schema_version}" does not match corpus schema_version "${corpus.schema_version}"`
     );
   }
+  validateCorpusCoverageForGates(corpus);
 
   const results = evaluateFixtures(corpus);
   const report = createReport({ corpus, thresholds, results });
