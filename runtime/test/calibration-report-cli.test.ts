@@ -101,3 +101,31 @@ test("calibration CLI emits deterministic report fields and evaluated confidence
     rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
+
+test("calibration CLI trims whitespace around --out path values", () => {
+  const testDirectory = fileURLToPath(new URL(".", import.meta.url));
+  const repoRoot = resolve(testDirectory, "../..");
+  const calibrationCliPath = resolve(repoRoot, "benchmarks/run-calibration.mjs");
+  const tmpRoot = mkdtempSync(join(tmpdir(), "l-semantica-calibration-cli-"));
+  const outputPath = resolve(tmpRoot, "trimmed-calibration-report.json");
+  const paddedOutputPath = `  ${outputPath}  `;
+
+  try {
+    const rawStdout = execFileSync(
+      "node",
+      ["--experimental-strip-types", calibrationCliPath, "--out", paddedOutputPath],
+      {
+        cwd: repoRoot,
+        stdio: "pipe",
+        encoding: "utf8"
+      }
+    );
+    const cliOutput = JSON.parse(rawStdout) as CalibrationCliOutput;
+
+    assert.equal(cliOutput.ok, true);
+    assert.equal(cliOutput.report_path, outputPath);
+    assert.equal(existsSync(outputPath), true);
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});

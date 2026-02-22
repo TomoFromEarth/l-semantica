@@ -59,7 +59,7 @@ function resolveCliPath(pathOrUndefined, defaultRelativePath, scriptDirectory) {
     return resolve(scriptDirectory, defaultRelativePath);
   }
 
-  return resolve(process.cwd(), pathOrUndefined);
+  return resolve(process.cwd(), pathOrUndefined.trim());
 }
 
 function readSingleFeedbackTensorEntry(feedbackTensorPath, fixtureId) {
@@ -128,7 +128,19 @@ function createBucketSummary(results) {
     }
   }
 
-  return CALIBRATION_BANDS.map((calibrationBand) => summaryByBand.get(calibrationBand));
+  return CALIBRATION_BANDS.map((calibrationBand) => {
+    const bucket = summaryByBand.get(calibrationBand);
+    if (bucket) {
+      return bucket;
+    }
+
+    return {
+      calibration_band: calibrationBand,
+      evaluated_count: 0,
+      pass_count: 0,
+      fail_count: 0
+    };
+  });
 }
 
 function evaluateCalibrationFixtures(corpus) {
