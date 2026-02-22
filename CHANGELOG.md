@@ -9,6 +9,7 @@ Before `1.0.0`, any release (minor or patch) may include breaking changes.
 ### Added
 - RFC-002 defining M2 legacy-continuation artifact contracts, safety boundaries, apply/rollback gating requirements, and benchmark gain validity rules (`rfcs/002-legacy-continuation-contracts-and-safety-boundaries.md`, `#49`).
 - Runtime repository-ingestion workspace snapshot artifact (`ls.m2.workspace_snapshot@1.0.0`) with deterministic git/inventory metadata, unsupported-file filtering, and runtime test coverage (`runtime/src/workspace-snapshot.ts`, `runtime/src/index.ts`, `runtime/test/workspace-snapshot.test.ts`, `runtime/README.md`, `#50`).
+- Runtime AST-aware intent-mapping artifact (`ls.m2.intent_mapping@1.0.0`) with confidence/provenance candidates, ambiguity/low-confidence guardrails, and runtime test coverage (`runtime/src/intent-mapping.ts`, `runtime/src/index.ts`, `runtime/test/intent-mapping.test.ts`, `runtime/README.md`, `#51`).
 - M1 reliability fixture corpus for known failure classes under `benchmarks/fixtures/reliability/failure-corpus.v0.json`, including recoverable and non-recoverable expectations.
 - Benchmark reliability corpus loader/validator module (`benchmarks/reliability-corpus.mjs`) with machine-readable schema and enum checks.
 - Runtime CI test coverage for reliability corpus loadability and class/recoverability coverage guarantees (`runtime/test/reliability-corpus.test.ts`).

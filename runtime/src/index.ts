@@ -667,6 +667,30 @@ export {
 } from "./feedback-tensor.ts";
 
 export {
+  DEFAULT_INTENT_MAPPING_AMBIGUITY_GAP,
+  DEFAULT_INTENT_MAPPING_INTENT_SOURCE,
+  DEFAULT_INTENT_MAPPING_MAX_ALTERNATIVES,
+  DEFAULT_INTENT_MAPPING_MIN_CONFIDENCE,
+  DEFAULT_INTENT_MAPPING_TOOL_VERSION,
+  INTENT_MAPPING_ARTIFACT_TYPE,
+  INTENT_MAPPING_DECISIONS,
+  INTENT_MAPPING_EXTRACTION_METHODS,
+  INTENT_MAPPING_REASON_CODES,
+  INTENT_MAPPING_SCHEMA_VERSION,
+  IntentMappingError,
+  createIntentMappingArtifact,
+  type CreateIntentMappingArtifactOptions,
+  type IntentMappingArtifactInputRef,
+  type IntentMappingArtifactV1,
+  type IntentMappingCandidate,
+  type IntentMappingCandidateRange,
+  type IntentMappingDecision,
+  type IntentMappingErrorCode,
+  type IntentMappingExtractionMethod,
+  type IntentMappingReasonCode
+} from "./intent-mapping.ts";
+
+export {
   DEFAULT_WORKSPACE_SNAPSHOT_IGNORED_PATHS,
   DEFAULT_WORKSPACE_SNAPSHOT_TOOL_VERSION,
   WORKSPACE_SNAPSHOT_ARTIFACT_TYPE,
