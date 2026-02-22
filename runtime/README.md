@@ -75,3 +75,26 @@ Execution engine, policy enforcement, and replay support.
   - `started_at` and `completed_at`
   - `contract_versions.semantic_ir` and `contract_versions.policy_profile`
   - `outcome.status` (`success` or `failure`) and `outcome.error` for failure cases
+
+## Workspace Snapshot (M2 `#50`)
+- `createWorkspaceSnapshotArtifact({ workspaceRoot, ...options })` performs deterministic repository ingestion for a local git worktree and returns `ls.m2.workspace_snapshot@1.0.0`.
+- Default ignored paths: `.git/**`, `node_modules/**`.
+- The artifact follows the RFC-002 M2 envelope fields (`artifact_type`, `schema_version`, `artifact_id`, `run_id`, `produced_at_utc`, `tool_version`, `inputs`, `trace`, `payload`).
+- `payload.git` includes `head_sha`, `branch`, and `is_dirty`.
+- `payload.inventory` includes `files_scanned`, `files_supported`, and sorted unique `languages` detected from supported file extensions.
+- `payload.filters.ignored_paths` records the effective ignore rules used during ingestion.
+- `payload.snapshot_hash` is a deterministic SHA-256 hash over normalized git + inventory snapshot state.
+- Deterministic tests/replays can provide `options.runIdFactory` and `options.now`.
+
+Example:
+
+```ts
+import { createWorkspaceSnapshotArtifact } from "@l-semantica/runtime";
+
+const snapshot = createWorkspaceSnapshotArtifact({
+  workspaceRoot: process.cwd(),
+  runIdFactory: () => "run_m2_20260222_0001",
+  now: () => new Date("2026-02-22T12:00:00Z"),
+  toolVersion: "l-semantica@0.1.0-dev"
+});
+```

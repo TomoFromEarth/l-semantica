@@ -665,3 +665,17 @@ export {
   type FeedbackTensorSourceStage,
   type FeedbackTensorV1
 } from "./feedback-tensor.ts";
+
+export {
+  DEFAULT_WORKSPACE_SNAPSHOT_IGNORED_PATHS,
+  DEFAULT_WORKSPACE_SNAPSHOT_TOOL_VERSION,
+  WORKSPACE_SNAPSHOT_ARTIFACT_TYPE,
+  WORKSPACE_SNAPSHOT_SCHEMA_VERSION,
+  WORKSPACE_SNAPSHOT_TRACE_SOURCE,
+  WorkspaceSnapshotError,
+  createWorkspaceSnapshotArtifact,
+  type CreateWorkspaceSnapshotArtifactOptions,
+  type WorkspaceSnapshotArtifactInputRef,
+  type WorkspaceSnapshotArtifactV1,
+  type WorkspaceSnapshotErrorCode
+} from "./workspace-snapshot.ts";
