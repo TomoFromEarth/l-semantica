@@ -225,3 +225,64 @@ const patchRun = createPatchRunArtifact({
   toolVersion: "l-semantica@0.1.0-dev"
 });
 ```
+
+## PR Bundle (M2 `#54`)
+- `createPrBundleArtifact({ patchRun, lineage, ...options })` consumes `ls.m2.patch_run@1.0.0` and emits `ls.m2.pr_bundle@1.0.0`.
+- The bundle reuses the upstream patch-run `run_id` by default and can include explicit lineage artifacts (`workspaceSnapshot`, `intentMapping`, `safeDiffPlan`) for complete traceability.
+- `payload.patch` embeds the patch-run patch payload (`format`, `digest`, `content`, counts) for human-inspectable PR-equivalent packaging.
+- `payload.verification` carries normalized required-check results/completeness from patch-run, and `payload.verification_evidence_ref` links the verification evidence artifact (defaults to the patch-run artifact id).
+- `payload.rollback` packages deterministic reverse-patch placeholder content plus rollback instructions when safe-diff-plan lineage is available.
+- `payload.traceability` records the intent/mapping/diff-plan/patch outcome chain and `trace.lineage` artifact ids.
+- `payload.readiness` performs RFC-002 PR-equivalent bundle completeness checks and fail-closes with `decision=stop` when required sections are missing (for example missing lineage, rollback package/instructions, or verification linkage/results).
+- Patch-run `policy_blocked` outcomes can still be packaged into a bundle for human review; readiness focuses on bundle completeness, while upstream patch outcome remains recorded in `payload.traceability.patch_run_outcome`.
+- Deterministic tests/replays can provide `options.now`; callers can override summary/rationale/risk tradeoffs, verification evidence ref, and rollback packaging details.
+
+Example:
+
+```ts
+import {
+  createIntentMappingArtifact,
+  createPatchRunArtifact,
+  createPrBundleArtifact,
+  createSafeDiffPlanArtifact,
+  createWorkspaceSnapshotArtifact
+} from "@l-semantica/runtime";
+
+const snapshot = createWorkspaceSnapshotArtifact({
+  workspaceRoot: process.cwd(),
+  runIdFactory: () => "run_m2_20260222_0001",
+  now: () => new Date("2026-02-22T12:00:00Z")
+});
+
+const intentMapping = createIntentMappingArtifact({
+  workspaceSnapshot: snapshot,
+  intent: "Update capability read_docs description to mention local RFCs",
+  now: () => new Date("2026-02-22T12:00:05Z")
+});
+
+const safeDiffPlan = createSafeDiffPlanArtifact({
+  intentMapping,
+  now: () => new Date("2026-02-22T12:00:10Z")
+});
+
+const patchRun = createPatchRunArtifact({
+  safeDiffPlan,
+  verificationResults: [
+    { check: "lint", status: "pass", evidence_ref: "artifact://lint-log" },
+    { check: "typecheck", status: "pass", evidence_ref: "artifact://typecheck-log" },
+    { check: "test", status: "pass", evidence_ref: "artifact://test-log" }
+  ],
+  now: () => new Date("2026-02-22T12:00:20Z")
+});
+
+const prBundle = createPrBundleArtifact({
+  patchRun,
+  lineage: {
+    workspaceSnapshot: snapshot,
+    intentMapping,
+    safeDiffPlan
+  },
+  now: () => new Date("2026-02-22T12:00:30Z"),
+  toolVersion: "l-semantica@0.1.0-dev"
+});
+```

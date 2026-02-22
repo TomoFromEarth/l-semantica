@@ -667,6 +667,33 @@ export {
 } from "./feedback-tensor.ts";
 
 export {
+  DEFAULT_PR_BUNDLE_BOUNDARY_MODE,
+  DEFAULT_PR_BUNDLE_ROLLBACK_STRATEGY,
+  DEFAULT_PR_BUNDLE_TOOL_VERSION,
+  PR_BUNDLE_ARTIFACT_TYPE,
+  PR_BUNDLE_DECISIONS,
+  PR_BUNDLE_REASON_CODES,
+  PR_BUNDLE_ROLLBACK_STRATEGIES,
+  PR_BUNDLE_SCHEMA_VERSION,
+  PrBundleError,
+  createPrBundleArtifact,
+  type CreatePrBundleArtifactOptions,
+  type PrBundleArtifactInputRef,
+  type PrBundleArtifactV1,
+  type PrBundleDecision,
+  type PrBundleDiffPlanEditSummary,
+  type PrBundleErrorCode,
+  type PrBundleLineageArtifacts,
+  type PrBundleMappedTarget,
+  type PrBundleReadiness,
+  type PrBundleReadinessRequiredSections,
+  type PrBundleReasonCode,
+  type PrBundleRollbackOverrides,
+  type PrBundleRollbackPackage,
+  type PrBundleRollbackStrategy
+} from "./pr-bundle.ts";
+
+export {
   DEFAULT_PATCH_RUN_MATERIALIZATION,
   DEFAULT_PATCH_RUN_POLICY_SENSITIVE_PATH_PATTERNS,
   DEFAULT_PATCH_RUN_REQUIRED_CHECKS,
