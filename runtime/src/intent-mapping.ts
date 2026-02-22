@@ -508,7 +508,7 @@ function findBestMatchingLineRange(
     }
   }
 
-  if (bestLine < 0) {
+  if (bestLine < 0 || bestScore <= 0) {
     return undefined;
   }
 
@@ -602,7 +602,14 @@ function scoreCandidate(input: CandidateBuildInput): { confidence: number; ratio
 
 function createTargetId(path: string, symbolPath: string | null): string {
   const raw = `${path}#${symbolPath ?? "file"}`;
-  return raw.replace(/[^A-Za-z0-9._/#+:-]/g, "_");
+  const readable = raw
+    .replace(/[^A-Za-z0-9._/#+:-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 96);
+  const digest = createHash("sha256").update(raw).digest("hex").slice(0, 12);
+
+  return `${readable.length > 0 ? readable : "target"}_${digest}`;
 }
 
 function buildCandidate(input: CandidateBuildInput): IntentMappingCandidate | undefined {

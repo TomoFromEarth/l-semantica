@@ -260,6 +260,70 @@ test("createIntentMappingArtifact prefers AST symbol hits over file-level text m
   }
 });
 
+test("createIntentMappingArtifact omits text-match provenance range for path-only matches", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    writeRepoFile(
+      repo.root,
+      "docs/quantum-sprocket-index.md",
+      [
+        "# Placeholder",
+        "",
+        "No intent tokens appear in this file body."
+      ].join("\n") + "\n"
+    );
+
+    const snapshot = createSnapshot(repo.root);
+    const artifact = createIntentMappingArtifact({
+      workspaceSnapshot: snapshot,
+      intent: "quantum sprocket index",
+      minConfidence: 0,
+      now: () => new Date("2026-02-22T13:00:11.000Z"),
+      toolVersion: "l-semantica@0.1.0-dev"
+    });
+
+    const target = artifact.payload.candidates.find(
+      (candidate) => candidate.path === "docs/quantum-sprocket-index.md"
+    );
+
+    assert.notEqual(target, undefined);
+    assert.equal(target?.provenance.method, "text_match");
+    assert.equal("range" in (target?.provenance ?? {}), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("createIntentMappingArtifact keeps target_id unique for paths that sanitize similarly", () => {
+  const repo = createFixtureRepo();
+
+  try {
+    writeRepoFile(repo.root, "docs/review key.md", "placeholder body\n");
+    writeRepoFile(repo.root, "docs/review_key.md", "placeholder body\n");
+
+    const snapshot = createSnapshot(repo.root);
+    const artifact = createIntentMappingArtifact({
+      workspaceSnapshot: snapshot,
+      intent: "review key",
+      minConfidence: 0,
+      ambiguityGap: 1,
+      now: () => new Date("2026-02-22T13:00:12.000Z"),
+      toolVersion: "l-semantica@0.1.0-dev"
+    });
+
+    const reviewKeyCandidates = artifact.payload.candidates.filter(
+      (candidate) =>
+        candidate.path === "docs/review key.md" || candidate.path === "docs/review_key.md"
+    );
+
+    assert.equal(reviewKeyCandidates.length, 2);
+    assert.notEqual(reviewKeyCandidates[0]?.target_id, reviewKeyCandidates[1]?.target_id);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test("createIntentMappingArtifact validates workspace snapshot input artifact shape", () => {
   assert.throws(
     () =>
