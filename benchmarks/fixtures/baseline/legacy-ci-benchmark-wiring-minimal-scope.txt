@@ -1,0 +1,4 @@
+Add minimal CI wiring for the legacy continuation benchmark gate using the existing benchmark command.
+The CI step should enforce the M2 objective threshold and fail when the benchmark report marks the gain invalid.
+Keep the change narrow, reuse checked-in threshold configuration, and avoid introducing a separate workflow unless strictly necessary.
+Preserve deterministic benchmark report serialization, include artifact references in the report inputs, and update tests so gate enforcement regressions are caught locally.

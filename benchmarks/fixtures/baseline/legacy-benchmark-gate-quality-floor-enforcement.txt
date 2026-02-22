@@ -1,0 +1,4 @@
+Implement the legacy continuation benchmark report for M2 so CI can evaluate token efficiency without counting invalid gains.
+The benchmark command must emit a structured artifact with per-task efficiency ratio, aggregate median and p90 metrics, and machine-readable quality-floor validity signals.
+Fail the gate when efficiency appears to meet the target but required checks, policy, acceptance criteria, or traceability conditions are not preserved.
+Document the report schema, thresholds, and reproducible local run steps, and keep deterministic output ordering for stable diffs.

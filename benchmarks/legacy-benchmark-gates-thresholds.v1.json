@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "threshold_id": "m2-legacy-benchmark-gates-v1",
+  "artifact_schema_version": "1.0.0",
+  "metrics": {
+    "median_efficiency_ratio_min": 5
+  },
+  "requirements": {
+    "quality_floor_preserved": true,
+    "valid_gain": true
+  }
+}

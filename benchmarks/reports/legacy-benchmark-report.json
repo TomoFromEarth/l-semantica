@@ -1,0 +1,168 @@
+{
+  "artifact_type": "ls.m2.legacy_benchmark_report",
+  "schema_version": "1.0.0",
+  "artifact_id": "lbr_2d9ecde248e68cca",
+  "run_id": "run_m2_bench_66dee6eefeed6229",
+  "produced_at_utc": "2026-02-22T00:00:00.000Z",
+  "tool_version": "l-semantica@0.1.0",
+  "inputs": [
+    {
+      "artifact_id": "patch_legacy_runtime_01",
+      "artifact_type": "ls.m2.patch_run",
+      "schema_version": "1.0.0"
+    },
+    {
+      "artifact_id": "prb_benchmark_gate_01",
+      "artifact_type": "ls.m2.pr_bundle",
+      "schema_version": "1.0.0"
+    },
+    {
+      "artifact_id": "prb_ci_wiring_01",
+      "artifact_type": "ls.m2.pr_bundle",
+      "schema_version": "1.0.0"
+    },
+    {
+      "artifact_id": "prb_legacy_runtime_01",
+      "artifact_type": "ls.m2.pr_bundle",
+      "schema_version": "1.0.0"
+    }
+  ],
+  "trace": {
+    "suite_id": "legacy-continuation.v1",
+    "task_config_schema_version": "1.0.0",
+    "threshold_id": "m2-legacy-benchmark-gates-v1"
+  },
+  "payload": {
+    "formula": "efficiency_ratio = baseline_tokens / ls_tokens",
+    "tasks": [
+      {
+        "task_id": "legacy-benchmark-gate-quality-floor-enforcement",
+        "task_name": "Legacy benchmark gate quality-floor enforcement and invalid-gain reporting",
+        "baseline_fixture": "benchmarks/fixtures/baseline/legacy-benchmark-gate-quality-floor-enforcement.txt",
+        "ls_fixture": "benchmarks/fixtures/ls/legacy-benchmark-gate-quality-floor-enforcement.ls",
+        "inputs": [
+          {
+            "artifact_id": "prb_benchmark_gate_01",
+            "artifact_type": "ls.m2.pr_bundle",
+            "schema_version": "1.0.0"
+          }
+        ],
+        "baseline_tokens": 80,
+        "ls_tokens": 15,
+        "efficiency_ratio": 5.333333333333333,
+        "quality_floor": {
+          "status": "pass",
+          "invalid_gain_reasons": [],
+          "required_checks": {
+            "required": 5,
+            "completed": 5,
+            "failed": 0
+          },
+          "evidence": {
+            "policy_compliant": true,
+            "acceptance_criteria_met": true,
+            "traceability_complete": true,
+            "unsupported_bypass": false,
+            "artifact_contract_valid": true
+          }
+        },
+        "gain_valid": true
+      },
+      {
+        "task_id": "legacy-ci-benchmark-wiring-minimal-scope",
+        "task_name": "Legacy benchmark CI wiring with minimal scope and deterministic output",
+        "baseline_fixture": "benchmarks/fixtures/baseline/legacy-ci-benchmark-wiring-minimal-scope.txt",
+        "ls_fixture": "benchmarks/fixtures/ls/legacy-ci-benchmark-wiring-minimal-scope.ls",
+        "inputs": [
+          {
+            "artifact_id": "prb_ci_wiring_01",
+            "artifact_type": "ls.m2.pr_bundle",
+            "schema_version": "1.0.0"
+          }
+        ],
+        "baseline_tokens": 73,
+        "ls_tokens": 14,
+        "efficiency_ratio": 5.214285714285714,
+        "quality_floor": {
+          "status": "pass",
+          "invalid_gain_reasons": [],
+          "required_checks": {
+            "required": 4,
+            "completed": 4,
+            "failed": 0
+          },
+          "evidence": {
+            "policy_compliant": true,
+            "acceptance_criteria_met": true,
+            "traceability_complete": true,
+            "unsupported_bypass": false,
+            "artifact_contract_valid": true
+          }
+        },
+        "gain_valid": true
+      },
+      {
+        "task_id": "legacy-runtime-pr-bundle-hardening",
+        "task_name": "Legacy runtime PR-bundle hardening with regression coverage",
+        "baseline_fixture": "benchmarks/fixtures/baseline/legacy-runtime-pr-bundle-hardening.txt",
+        "ls_fixture": "benchmarks/fixtures/ls/legacy-runtime-pr-bundle-hardening.ls",
+        "inputs": [
+          {
+            "artifact_id": "patch_legacy_runtime_01",
+            "artifact_type": "ls.m2.patch_run",
+            "schema_version": "1.0.0"
+          },
+          {
+            "artifact_id": "prb_legacy_runtime_01",
+            "artifact_type": "ls.m2.pr_bundle",
+            "schema_version": "1.0.0"
+          }
+        ],
+        "baseline_tokens": 82,
+        "ls_tokens": 14,
+        "efficiency_ratio": 5.857142857142857,
+        "quality_floor": {
+          "status": "pass",
+          "invalid_gain_reasons": [],
+          "required_checks": {
+            "required": 4,
+            "completed": 4,
+            "failed": 0
+          },
+          "evidence": {
+            "policy_compliant": true,
+            "acceptance_criteria_met": true,
+            "traceability_complete": true,
+            "unsupported_bypass": false,
+            "artifact_contract_valid": true
+          }
+        },
+        "gain_valid": true
+      }
+    ],
+    "aggregates": {
+      "task_count": 3,
+      "baseline_tokens_total": 235,
+      "ls_tokens_total": 43,
+      "efficiency_ratio_total": 5.465116279069767,
+      "median_efficiency_ratio": 5.333333333333333,
+      "p90_efficiency_ratio": 5.857142857142857
+    },
+    "quality_floor_summary": {
+      "status": "pass",
+      "invalid_gain_reasons": []
+    },
+    "m2_objective_evaluation": {
+      "decision": "continue",
+      "reason_code": "ok",
+      "reason_detail": "Median efficiency ratio meets threshold (5) and quality floor is preserved",
+      "efficiency_target_met": true,
+      "quality_floor_preserved": true,
+      "valid_gain": true,
+      "thresholds": {
+        "median_efficiency_ratio_min": 5
+      },
+      "failed_metrics": []
+    }
+  }
+}

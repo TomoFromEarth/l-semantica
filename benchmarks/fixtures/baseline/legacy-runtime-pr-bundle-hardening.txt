@@ -1,0 +1,6 @@
+You are continuing work on a legacy TypeScript runtime that emits versioned M2 artifacts.
+Implement a fail-closed validation hardening change for the PR-equivalent bundle artifact builder.
+Preserve deterministic artifact serialization, strict upstream contract checks, and reason-coded readiness semantics.
+Add targeted regression coverage for malformed verification evidence and blank-normalized required collections.
+Update documentation and changelog notes for the new benchmark-facing behavior without widening scope into apply controls.
+Run lint, typecheck, and tests before commit, and keep the patch small enough for human review.
