@@ -98,3 +98,37 @@ const snapshot = createWorkspaceSnapshotArtifact({
   toolVersion: "l-semantica@0.1.0-dev"
 });
 ```
+
+## Intent Mapping (M2 `#51`)
+- `createIntentMappingArtifact({ workspaceSnapshot, intent, ...options })` consumes `ls.m2.workspace_snapshot@1.0.0` and emits `ls.m2.intent_mapping@1.0.0`.
+- The mapper reuses the upstream snapshot `run_id` by default and records the snapshot envelope in `inputs`.
+- `.ls` files use compiler AST symbol lookup (`goal`, `capability`, `check`) with file/symbol/range provenance.
+- Other supported text files use deterministic file-level `text_match` fallback candidates.
+- `payload.candidates` contains selected targets (or ambiguous top candidates), `payload.alternatives` contains remaining ranked options.
+- Guardrail outcomes are reason-coded:
+  - `decision=continue` + `reason_code=ok` for a single high-confidence target.
+  - `decision=escalate` + `reason_code=mapping_ambiguous` or `mapping_low_confidence` when autonomous continuation should be blocked.
+  - `decision=stop` + `reason_code=unsupported_input` when no viable target matches.
+- Deterministic tests/replays can provide `options.now`; confidence thresholds are configurable via `minConfidence` and `ambiguityGap`.
+
+Example:
+
+```ts
+import {
+  createIntentMappingArtifact,
+  createWorkspaceSnapshotArtifact
+} from "@l-semantica/runtime";
+
+const snapshot = createWorkspaceSnapshotArtifact({
+  workspaceRoot: process.cwd(),
+  runIdFactory: () => "run_m2_20260222_0001",
+  now: () => new Date("2026-02-22T12:00:00Z")
+});
+
+const intentMapping = createIntentMappingArtifact({
+  workspaceSnapshot: snapshot,
+  intent: "Update capability read_docs description to mention local RFCs",
+  now: () => new Date("2026-02-22T12:00:05Z"),
+  toolVersion: "l-semantica@0.1.0-dev"
+});
+```
